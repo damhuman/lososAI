@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seafood Store</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading screen -->
+        <div id="loading" class="screen active">
+            <div class="loading-spinner"></div>
+            <p>Завантаження...</p>
+            <button id="debug-nav" style="margin-top: 20px; padding: 10px; background: #2481cc; color: white; border: none; border-radius: 4px;">Test Navigation</button>
+        </div>
+
+        <!-- Categories screen -->
+        <div id="categories" class="screen">
+            <div class="header">
+                <h1>🐟 Магазин морепродуктів</h1>
+                <p>Оберіть категорію товарів</p>
+            </div>
+            
+            <div class="categories-grid">
+                <div class="category-card" data-category="salmon">
+                    <div class="category-icon">🐟</div>
+                    <h3>Лосось</h3>
+                    <p>Солений, копчений, холоджений</p>
+                </div>
+                
+                <div class="category-card" data-category="shellfish">
+                    <div class="category-icon">🦐</div>
+                    <h3>Молюски</h3>
+                    <p>Креветки, мідії та інше</p>
+                </div>
+                
+                <div class="category-card" data-category="tomyum">
+                    <div class="category-icon">🍜</div>
+                    <h3>Tom Yum набір</h3>
+                    <p>Все для приготування супу</p>
+                </div>
+                
+                <div class="category-card" data-category="caviar">
+                    <div class="category-icon">🥚</div>
+                    <h3>Ікра</h3>
+                    <p>Різні види ікри</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Products screen -->
+        <div id="products" class="screen">
+            <div class="header">
+                <h2 id="category-title">Товари</h2>
+            </div>
+            
+            <div id="products-list" class="products-list">
+                <!-- Products will be loaded here dynamically -->
+            </div>
+        </div>
+
+        <!-- Product detail screen -->
+        <div id="product-detail" class="screen">
+            <div class="product-image">
+                <img id="product-img" src="" alt="Product image">
+            </div>
+            
+            <div class="product-info">
+                <h2 id="product-name"></h2>
+                <p id="product-description"></p>
+                <div class="price-info">
+                    <span id="product-price"></span>
+                </div>
+            </div>
+            
+            <div class="product-options">
+                <div class="package-options">
+                    <h4>Фасування:</h4>
+                    <div id="package-list" class="radio-group">
+                        <!-- Package options will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="quantity-controls">
+                    <h4>Кількість:</h4>
+                    <div class="quantity-selector">
+                        <button type="button" class="quantity-btn" id="quantity-minus">-</button>
+                        <input type="number" id="quantity-input" value="1" min="1" max="10">
+                        <button type="button" class="quantity-btn" id="quantity-plus">+</button>
+                    </div>
+                </div>
+                
+                <div class="total-price">
+                    <span>Загальна вартість: <strong id="total-price">0 грн</strong></span>
+                </div>
+                
+                <button id="add-to-cart-btn" class="btn btn-primary">
+                    Додати до кошика
+                </button>
+            </div>
+        </div>
+
+        <!-- Cart screen -->
+        <div id="cart" class="screen">
+            <div class="header">
+                <h2>🛒 Кошик</h2>
+            </div>
+            
+            <div id="cart-items" class="cart-items">
+                <!-- Cart items will be loaded here -->
+            </div>
+            
+            <div class="cart-empty" id="cart-empty" style="display: none;">
+                <p>Кошик порожній</p>
+                <button class="btn btn-secondary" onclick="showScreen('categories')">
+                    Продовжити покупки
+                </button>
+            </div>
+            
+            <div class="cart-summary" id="cart-summary">
+                <div class="warning-text">
+                    ⚠️ Увага! Фактична вага може відрізнятися на ±10%
+                </div>
+                
+                <div class="total-summary">
+                    <div class="total-line">
+                        <span>Загальна сума:</span>
+                        <strong id="cart-total">0 грн</strong>
+                    </div>
+                </div>
+                
+                <div class="cart-actions">
+                    <button class="btn btn-secondary" onclick="showScreen('categories')">
+                        Продовжити покупки
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout screen -->
+        <div id="checkout" class="screen">
+            <div class="header">
+                <h2>📋 Оформлення замовлення</h2>
+            </div>
+            
+            <form id="checkout-form">
+                <div class="form-group">
+                    <label for="district-select">Район доставки:</label>
+                    <select id="district-select" required>
+                        <option value="">Оберіть район</option>
+                        <!-- Districts will be loaded dynamically -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Час доставки:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="delivery-time" value="morning" required>
+                            <span>🌅 Ранок (8:00-12:00)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="delivery-time" value="afternoon" required>
+                            <span>☀️ День (12:00-16:00)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="delivery-time" value="evening" required>
+                            <span>🌆 Вечір (16:00-20:00)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="comment-input">Коментар до замовлення:</label>
+                    <textarea id="comment-input" placeholder="Додаткові побажання (необов'язково)"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="promo-input">Промокод:</label>
+                    <div class="promo-input-group">
+                        <input type="text" id="promo-input" placeholder="Введіть промокод (необов'язково)">
+                        <button type="button" id="promo-check-btn" class="btn btn-small">Перевірити</button>
+                    </div>
+                    <div id="promo-result" class="promo-result"></div>
+                </div>
+                
+                <div class="order-summary">
+                    <h4>Ваше замовлення:</h4>
+                    <div id="checkout-items"></div>
+                    <div class="total-line">
+                        <span>Сума до сплати:</span>
+                        <strong id="checkout-total">0 грн</strong>
+                    </div>
+                </div>
+                
+                <div class="delivery-info">
+                    <p><strong>ℹ️ Інформація про доставку:</strong></p>
+                    <p>Замовлення, оформлені до 18:00, доставляються наступного дня</p>
+                    <p>Оплата при отриманні</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/telegram.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
