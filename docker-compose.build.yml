@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    image: registry.digitalocean.com/losos/backend:latest
+
+  # Telegram Bot
+  telegram-bot:
+    build:
+      context: ./telegram_bot
+      dockerfile: ../docker/bot.Dockerfile
+    image: registry.digitalocean.com/losos/telegram-bot:latest
+
+  # React Admin Panel (Production Build)
+  admin-react:
+    build:
+      context: ./admin-panel
+      dockerfile: ../docker/admin-react.prod.Dockerfile
+    image: registry.digitalocean.com/losos/admin-react:latest
