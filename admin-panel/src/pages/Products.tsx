@@ -22,7 +22,8 @@ import {
   EditOutlined, 
   DeleteOutlined, 
   UploadOutlined,
-  EyeOutlined
+  EyeOutlined,
+  LoadingOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { categoriesAPI, productsAPI } from '../services/api';
@@ -39,7 +40,7 @@ const Products: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: productsData, loading } = useQuery(
+  const { data: productsData, isLoading } = useQuery(
     'products', 
     () => productsAPI.getAll(1, 100)
   );
@@ -281,7 +282,7 @@ const Products: React.FC = () => {
         columns={columns}
         dataSource={productsData?.items}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
@@ -379,7 +380,7 @@ const Products: React.FC = () => {
                 handleImageUpload(file);
                 return false;
               }}
-              loading={uploading}
+              disabled={uploading}
             >
               {imageUrl ? (
                 <Image 
@@ -390,8 +391,10 @@ const Products: React.FC = () => {
                 />
               ) : (
                 <div>
-                  <UploadOutlined />
-                  <div style={{ marginTop: 8 }}>Завантажити</div>
+                  {uploading ? <LoadingOutlined /> : <UploadOutlined />}
+                  <div style={{ marginTop: 8 }}>
+                    {uploading ? 'Завантаження...' : 'Завантажити'}
+                  </div>
                 </div>
               )}
             </Upload>

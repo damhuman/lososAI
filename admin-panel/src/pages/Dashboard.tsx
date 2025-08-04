@@ -4,15 +4,18 @@ import {
   ShoppingCartOutlined, 
   UserOutlined, 
   DollarOutlined,
-  RiseOutlined 
+  RiseOutlined,
+  AppstoreOutlined,
+  TagsOutlined
 } from '@ant-design/icons';
 import { useQuery } from 'react-query';
-import { ordersAPI, usersAPI } from '../services/api';
+import { ordersAPI, usersAPI, productsAPI, categoriesAPI } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard: React.FC = () => {
   const { data: orderStats } = useQuery('order-stats', () => ordersAPI.getStats());
   const { data: userStats } = useQuery('user-stats', () => usersAPI.getStats());
+  const { data: productStats } = useQuery('product-stats', () => productsAPI.getStats());
   const { data: recentOrders } = useQuery('recent-orders', () => 
     ordersAPI.getAll(1, 5)
   );
@@ -97,12 +100,35 @@ const Dashboard: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
+              title="Загальна кількість товарів"
+              value={productStats?.total_products || 0}
+              prefix={<AppstoreOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Кількість категорій"
+              value={productStats?.total_categories || 0}
+              prefix={<TagsOutlined />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={6}>
+          <Card>
+            <Statistic
               title="Середня сума замовлення"
               value={orderStats?.avg_order_value || 0}
               prefix={<RiseOutlined />}
               suffix="грн"
               precision={2}
-              valueStyle={{ color: '#1890ff' }}
+              valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
@@ -112,7 +138,27 @@ const Dashboard: React.FC = () => {
               title="Загальна кількість користувачів"
               value={userStats?.total || 0}
               prefix={<UserOutlined />}
-              valueStyle={{ color: '#722ed1' }}
+              valueStyle={{ color: '#fa8c16' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Рекомендовані товари"
+              value={productStats?.featured_products || 0}
+              prefix={<RiseOutlined />}
+              valueStyle={{ color: '#eb2f96' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="Активні товари"
+              value={productStats?.active_products || 0}
+              prefix={<AppstoreOutlined />}
+              valueStyle={{ color: '#13c2c2' }}
             />
           </Card>
         </Col>

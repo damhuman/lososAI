@@ -11,11 +11,13 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add basic auth to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const username = localStorage.getItem('admin_username');
+  const password = localStorage.getItem('admin_password');
+  if (username && password) {
+    const encodedCredentials = btoa(`${username}:${password}`);
+    config.headers.Authorization = `Basic ${encodedCredentials}`;
   }
   return config;
 });
@@ -23,13 +25,25 @@ api.interceptors.request.use((config) => {
 // Auth API
 export const authAPI = {
   login: async (username: string, password: string): Promise<AdminUser> => {
-    const response = await api.post('/admin/login', { username, password });
-    return response.data;
+    // Store credentials for basic auth
+    localStorage.setItem('admin_username', username);
+    localStorage.setItem('admin_password', password);
+    
+    // Verify credentials by making a test request
+    try {
+      const response = await api.get('/admin/verify');
+      return { username, token: btoa(`${username}:${password}`) };
+    } catch (error) {
+      // Clear stored credentials if login fails
+      localStorage.removeItem('admin_username');
+      localStorage.removeItem('admin_password');
+      throw error;
+    }
   },
   
   logout: async (): Promise<void> => {
-    await api.post('/admin/logout');
-    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_username');
+    localStorage.removeItem('admin_password');
   },
   
   verifyToken: async (): Promise<boolean> => {
@@ -98,6 +112,16 @@ export const productsAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+  
+  getStats: async (): Promise<{
+    total_products: number;
+    total_categories: number;
+    featured_products: number;
+    active_products: number;
+  }> => {
+    const response = await api.get('/admin/products/stats');
     return response.data;
   }
 };

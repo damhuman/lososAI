@@ -1,12 +1,11 @@
 from typing import List, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload, joinedload
-import jwt
-from passlib.context import CryptContext
+import secrets
 
 from app.api.deps import get_async_session
 from app.core.config import settings
@@ -18,55 +17,35 @@ from app.schemas.admin import *
 from app.services.s3 import s3_service
 
 router = APIRouter()
-security = HTTPBearer()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+basic_security = HTTPBasic()
 
 # Admin Authentication
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(hours=24)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
-    return encoded_jwt
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=["HS256"])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-        return username
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+def verify_basic_auth(credentials: HTTPBasicCredentials = Depends(basic_security)):
+    """Verify basic authentication credentials"""
+    is_correct_username = secrets.compare_digest(credentials.username, settings.ADMIN_USERNAME)
+    is_correct_password = secrets.compare_digest(credentials.password, settings.ADMIN_PASSWORD)
+    
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
-@router.post("/login", response_model=AdminUserResponse)
-async def admin_login(credentials: AdminLogin):
-    """Admin login endpoint"""
-    if (credentials.username == settings.ADMIN_USERNAME and 
-        credentials.password == settings.ADMIN_PASSWORD):
-        access_token = create_access_token(data={"sub": credentials.username})
-        return AdminUserResponse(username=credentials.username, token=access_token)
-    else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-@router.post("/logout")
-async def admin_logout(username: str = Depends(verify_token)):
-    """Admin logout endpoint"""
-    return {"message": "Logged out successfully"}
+# Basic auth doesn't need login/logout endpoints
 
 @router.get("/verify")
-async def verify_admin_token(username: str = Depends(verify_token)):
-    """Verify admin token"""
+async def verify_admin_token(username: str = Depends(verify_basic_auth)):
+    """Verify admin credentials"""
     return {"username": username, "valid": True}
 
 # File Upload
 @router.post("/upload/image", response_model=ImageUploadResponse)
 async def upload_image(
     image: UploadFile = File(...),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Upload image to S3"""
     try:
@@ -79,7 +58,7 @@ async def upload_image(
 @router.get("/categories", response_model=List[CategorySchema])
 async def get_admin_categories(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get all categories for admin"""
     query = select(Category).order_by(Category.order)
@@ -91,7 +70,7 @@ async def get_admin_categories(
 async def create_category(
     category: CategoryCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Create new category"""
     db_category = Category(**category.dict())
@@ -105,7 +84,7 @@ async def update_category(
     category_id: str,
     category: CategoryUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Update category"""
     query = select(Category).where(Category.id == category_id)
@@ -126,7 +105,7 @@ async def update_category(
 async def delete_category(
     category_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Delete category"""
     query = select(Category).where(Category.id == category_id)
@@ -146,7 +125,7 @@ async def get_admin_products(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get paginated products for admin"""
     offset = (page - 1) * size
@@ -174,11 +153,34 @@ async def get_admin_products(
         size=size
     )
 
+@router.get("/products/stats")
+async def get_product_stats(
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get product statistics"""
+    total_products_query = select(func.count(Product.id))
+    total_categories_query = select(func.count(Category.id))
+    featured_products_query = select(func.count(Product.id)).where(Product.is_featured == True)
+    active_products_query = select(func.count(Product.id)).where(Product.is_active == True)
+    
+    total_products = (await session.execute(total_products_query)).scalar()
+    total_categories = (await session.execute(total_categories_query)).scalar()
+    featured_products = (await session.execute(featured_products_query)).scalar()
+    active_products = (await session.execute(active_products_query)).scalar()
+    
+    return {
+        "total_products": total_products,
+        "total_categories": total_categories,
+        "featured_products": featured_products,
+        "active_products": active_products
+    }
+
 @router.get("/products/{product_id}", response_model=ProductSchema)
 async def get_admin_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get product by ID"""
     query = select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
@@ -194,7 +196,7 @@ async def get_admin_product(
 async def create_product(
     product: ProductCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Create new product"""
     db_product = Product(**product.dict())
@@ -211,7 +213,7 @@ async def update_product(
     product_id: str,
     product: ProductUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Update product"""
     query = select(Product).where(Product.id == product_id)
@@ -236,7 +238,7 @@ async def update_product(
 async def delete_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Delete product"""
     query = select(Product).where(Product.id == product_id)
@@ -254,13 +256,14 @@ async def delete_product(
     await session.commit()
     return {"message": "Product deleted successfully"}
 
+
 # Users Management
 @router.get("/users", response_model=PaginatedResponse[UserResponse])
 async def get_admin_users(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get paginated users for admin"""
     offset = (page - 1) * size
@@ -290,7 +293,7 @@ async def get_admin_users(
 @router.get("/users/stats", response_model=UserStats)
 async def get_user_stats(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get user statistics"""
     total_query = select(func.count(User.id))
@@ -315,7 +318,7 @@ async def update_user(
     user_id: int,
     user: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Update user"""
     query = select(User).where(User.id == user_id)
@@ -341,7 +344,7 @@ async def get_admin_orders(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get paginated orders for admin"""
     offset = (page - 1) * size
@@ -396,58 +399,12 @@ async def get_admin_orders(
         size=size
     )
 
-@router.get("/orders/{order_id}", response_model=OrderResponse)
-async def get_admin_order(
-    order_id: int,
-    session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
-):
-    """Get order by ID"""
-    query = (
-        select(Order)
-        .options(
-            selectinload(Order.items),
-            selectinload(Order.user),
-            selectinload(Order.district)
-        )
-        .where(Order.id == order_id)
-    )
-    result = await session.execute(query)
-    order = result.scalar_one_or_none()
-    
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    return order
-
-@router.put("/orders/{order_id}/status", response_model=OrderResponse)
-async def update_order_status(
-    order_id: int,
-    status_update: OrderStatusUpdate,
-    session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
-):
-    """Update order status"""
-    query = select(Order).where(Order.id == order_id)
-    result = await session.execute(query)
-    order = result.scalar_one_or_none()
-    
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    order.status = status_update.status
-    order.updated_at = datetime.utcnow()
-    
-    await session.commit()
-    await session.refresh(order, ['items', 'user', 'district'])
-    return order
-
 @router.get("/orders/stats", response_model=OrderStats)
 async def get_order_stats(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get order statistics"""
     # Build filters
@@ -499,12 +456,59 @@ async def get_order_stats(
         orders_by_status=orders_by_status
     )
 
+@router.get("/orders/{order_id}", response_model=OrderResponse)
+async def get_admin_order(
+    order_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get order by ID"""
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.user),
+            selectinload(Order.district)
+        )
+        .where(Order.id == order_id)
+    )
+    result = await session.execute(query)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return order
+
+@router.put("/orders/{order_id}/status", response_model=OrderResponse)
+async def update_order_status(
+    order_id: int,
+    status_update: OrderStatusUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Update order status"""
+    query = select(Order).where(Order.id == order_id)
+    result = await session.execute(query)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order.status = status_update.status
+    order.updated_at = datetime.utcnow()
+    
+    await session.commit()
+    await session.refresh(order, ['items', 'user', 'district'])
+    return order
+
+
 @router.get("/orders/export")
 async def export_orders_report(
     start_date: str = Query(...),
     end_date: str = Query(...),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Export orders report as Excel"""
     try:
@@ -601,7 +605,7 @@ async def export_orders_report(
 @router.get("/districts", response_model=List[DistrictResponse])
 async def get_admin_districts(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get all districts for admin"""
     query = select(District).order_by(District.name)
@@ -613,7 +617,7 @@ async def get_admin_districts(
 async def create_district(
     district: DistrictCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Create new district"""
     db_district = District(**district.dict())
@@ -627,7 +631,7 @@ async def update_district(
     district_id: int,
     district: DistrictUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Update district"""
     query = select(District).where(District.id == district_id)
@@ -648,7 +652,7 @@ async def update_district(
 async def delete_district(
     district_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Delete district"""
     query = select(District).where(District.id == district_id)
@@ -666,7 +670,7 @@ async def delete_district(
 @router.get("/promo-codes", response_model=List[PromoCodeResponse])
 async def get_admin_promo_codes(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Get all promo codes for admin"""
     query = select(PromoCode).order_by(desc(PromoCode.id))
@@ -678,7 +682,7 @@ async def get_admin_promo_codes(
 async def create_promo_code(
     promo_code: PromoCodeCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Create new promo code"""
     db_promo_code = PromoCode(**promo_code.dict())
@@ -692,7 +696,7 @@ async def update_promo_code(
     promo_code_id: int,
     promo_code: PromoCodeUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Update promo code"""
     query = select(PromoCode).where(PromoCode.id == promo_code_id)
@@ -713,7 +717,7 @@ async def update_promo_code(
 async def delete_promo_code(
     promo_code_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_token)
+    username: str = Depends(verify_basic_auth)
 ):
     """Delete promo code"""
     query = select(PromoCode).where(PromoCode.id == promo_code_id)

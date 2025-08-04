@@ -23,7 +23,7 @@ const Categories: React.FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data: categories, loading } = useQuery('categories', categoriesAPI.getAll);
+  const { data: categories, isLoading } = useQuery('categories', categoriesAPI.getAll);
 
   const createMutation = useMutation(categoriesAPI.create, {
     onSuccess: () => {
@@ -194,7 +194,7 @@ const Categories: React.FC = () => {
         columns={columns}
         dataSource={categories}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,

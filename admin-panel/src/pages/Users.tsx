@@ -35,7 +35,7 @@ const Users: React.FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data: usersData, loading } = useQuery(
+  const { data: usersData, isLoading } = useQuery(
     'users', 
     () => usersAPI.getAll(1, 100)
   );
@@ -209,7 +209,7 @@ const Users: React.FC = () => {
         columns={columns}
         dataSource={filteredUsers}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,

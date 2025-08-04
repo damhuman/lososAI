@@ -38,7 +38,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ConfigProvider locale={ukUA}>
         <AuthProvider>
-          <Router basename="/adminpanel">
+          <Router basename="/admin">
             <div className="App">
               <Routes>
                 <Route path="/login" element={<Login />} />

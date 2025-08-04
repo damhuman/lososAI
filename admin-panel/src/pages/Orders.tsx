@@ -26,7 +26,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { ordersAPI } from '../services/api';
 import { Order, OrderItem } from '../types';
-import moment from 'moment';
+import dayjs, { Dayjs } from 'dayjs';
 import { saveAs } from 'file-saver';
 
 const { RangePicker } = DatePicker;
@@ -36,18 +36,18 @@ const Orders: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<[moment.Moment, moment.Moment] | null>(null);
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [searchText, setSearchText] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: ordersData, loading } = useQuery(
+  const { data: ordersData, isLoading } = useQuery(
     ['orders', statusFilter, dateRange, searchText], 
     () => ordersAPI.getAll(
       1, 
       100,
       statusFilter !== 'all' ? statusFilter : undefined,
-      dateRange?.[0]?.format('YYYY-MM-DD'),
-      dateRange?.[1]?.format('YYYY-MM-DD')
+      dateRange?.[0] ? dateRange[0].format('YYYY-MM-DD') : undefined,
+      dateRange?.[1] ? dateRange[1].format('YYYY-MM-DD') : undefined
     )
   );
 
@@ -76,8 +76,8 @@ const Orders: React.FC = () => {
 
   const handleExportReport = async () => {
     try {
-      const startDate = dateRange?.[0]?.format('YYYY-MM-DD') || moment().subtract(30, 'days').format('YYYY-MM-DD');
-      const endDate = dateRange?.[1]?.format('YYYY-MM-DD') || moment().format('YYYY-MM-DD');
+      const startDate = (dateRange?.[0] && dateRange[0].format('YYYY-MM-DD')) || dayjs().subtract(30, 'day').format('YYYY-MM-DD');
+      const endDate = (dateRange?.[1] && dateRange[1].format('YYYY-MM-DD')) || dayjs().format('YYYY-MM-DD');
       
       const blob = await ordersAPI.exportReport(startDate, endDate);
       saveAs(blob, `orders_report_${startDate}_${endDate}.xlsx`);
@@ -193,7 +193,7 @@ const Orders: React.FC = () => {
       key: 'delivery',
       render: (_: any, record: Order) => (
         <div>
-          <div>{moment(record.delivery_date).format('DD.MM.YYYY')}</div>
+          <div>{dayjs(record.delivery_date).format('DD.MM.YYYY')}</div>
           <div style={{ color: '#666', fontSize: '12px' }}>
             {timeSlotLabels[record.delivery_time_slot]}
           </div>
@@ -204,7 +204,7 @@ const Orders: React.FC = () => {
       title: 'Створено',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => moment(date).format('DD.MM.YYYY HH:mm'),
+      render: (date: string) => dayjs(date).format('DD.MM.YYYY HH:mm'),
     },
     {
       title: 'Дії',
@@ -273,7 +273,7 @@ const Orders: React.FC = () => {
         columns={columns}
         dataSource={filteredOrders}
         rowKey="id"
-        loading={loading}
+        loading={isLoading}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
@@ -312,7 +312,7 @@ const Orders: React.FC = () => {
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Район">{selectedOrder.district?.name}</Descriptions.Item>
                     <Descriptions.Item label="Адреса">{selectedOrder.delivery_address || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Дата">{moment(selectedOrder.delivery_date).format('DD.MM.YYYY')}</Descriptions.Item>
+                    <Descriptions.Item label="Дата">{dayjs(selectedOrder.delivery_date).format('DD.MM.YYYY')}</Descriptions.Item>
                     <Descriptions.Item label="Час">{timeSlotLabels[selectedOrder.delivery_time_slot]}</Descriptions.Item>
                   </Descriptions>
                 </Card>
@@ -387,8 +387,8 @@ const Orders: React.FC = () => {
                         {statusLabels[selectedOrder.status]}
                       </Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Створено">{moment(selectedOrder.created_at).format('DD.MM.YYYY HH:mm')}</Descriptions.Item>
-                    <Descriptions.Item label="Оновлено">{selectedOrder.updated_at ? moment(selectedOrder.updated_at).format('DD.MM.YYYY HH:mm') : '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Створено">{dayjs(selectedOrder.created_at).format('DD.MM.YYYY HH:mm')}</Descriptions.Item>
+                    <Descriptions.Item label="Оновлено">{selectedOrder.updated_at ? dayjs(selectedOrder.updated_at).format('DD.MM.YYYY HH:mm') : '—'}</Descriptions.Item>
                     <Descriptions.Item label="Коментар">{selectedOrder.comment || '—'}</Descriptions.Item>
                   </Descriptions>
                 </Card>

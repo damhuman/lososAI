@@ -30,20 +30,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('admin_token');
-      if (token) {
+      const username = localStorage.getItem('admin_username');
+      const password = localStorage.getItem('admin_password');
+      
+      if (username && password) {
         try {
           const isValid = await authAPI.verifyToken();
           if (isValid) {
-            const username = localStorage.getItem('admin_username');
-            setUser({ username: username || 'admin', token });
+            setUser({ username, token: btoa(`${username}:${password}`) });
           } else {
-            localStorage.removeItem('admin_token');
             localStorage.removeItem('admin_username');
+            localStorage.removeItem('admin_password');
           }
         } catch (error) {
-          localStorage.removeItem('admin_token');
           localStorage.removeItem('admin_username');
+          localStorage.removeItem('admin_password');
         }
       }
       setLoading(false);
@@ -55,8 +56,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       const userData = await authAPI.login(username, password);
-      localStorage.setItem('admin_token', userData.token);
-      localStorage.setItem('admin_username', userData.username);
       setUser(userData);
     } catch (error) {
       throw error;
@@ -69,8 +68,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_username');
+      localStorage.removeItem('admin_password');
       setUser(null);
     }
   };

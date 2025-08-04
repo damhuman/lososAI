@@ -30,8 +30,8 @@ const Settings: React.FC = () => {
   const [promoForm] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const { data: districts, loading: districtsLoading } = useQuery('districts', districtsAPI.getAll);
-  const { data: promoCodes, loading: promoLoading } = useQuery('promo-codes', promoCodesAPI.getAll);
+  const { data: districts, isLoading: districtsLoading } = useQuery('districts', districtsAPI.getAll);
+  const { data: promoCodes, isLoading: promoLoading } = useQuery('promo-codes', promoCodesAPI.getAll);
 
   // District mutations
   const createDistrictMutation = useMutation(districtsAPI.create, {
