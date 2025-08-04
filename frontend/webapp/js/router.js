@@ -74,9 +74,11 @@ class Router {
         
         console.log(`Hiding current screen: ${this.currentScreen}`);
         
-        // Store previous screen for back navigation
+        // Store previous screen for back navigation (but skip loading screen in history)
         this.previousScreen = this.currentScreen;
-        this.history.push(this.currentScreen);
+        if (this.currentScreen !== 'loading') {
+            this.history.push(this.currentScreen);
+        }
         
         // Hide current screen
         if (this.screens[this.currentScreen]) {
@@ -109,8 +111,14 @@ class Router {
     }
     
     goBack() {
+        console.log('goBack() called');
+        console.log('Current screen:', this.currentScreen);
+        console.log('History:', this.history);
+        
         if (this.history.length > 0) {
             const previousScreen = this.history.pop();
+            
+            console.log(`Going back to: ${previousScreen}`);
             
             // Hide current screen
             if (this.screens[this.currentScreen]) {
@@ -120,8 +128,14 @@ class Router {
             
             // Show previous screen
             this.currentScreen = previousScreen;
-            this.screens[previousScreen].classList.add('active');
-            this.screens[previousScreen].style.display = 'block';
+            if (this.screens[previousScreen]) {
+                this.screens[previousScreen].classList.add('active');
+                this.screens[previousScreen].style.display = 'block';
+            } else {
+                console.error(`Previous screen '${previousScreen}' not found`);
+                this.navigateTo('categories');
+                return;
+            }
             
             // Update Telegram UI
             this.updateTelegramUI();
@@ -132,16 +146,21 @@ class Router {
             // Notify listeners
             this.notifyListeners(previousScreen, {});
             
-            console.log(`Went back to: ${previousScreen}`);
+            console.log(`Successfully went back to: ${previousScreen}`);
         } else {
-            // No history, go to categories
+            console.log('No history available, going to categories');
             this.navigateTo('categories');
         }
     }
     
     updateTelegramUI() {
         const tg = window.telegramWebApp;
-        if (!tg) return;
+        if (!tg) {
+            console.log('Telegram WebApp not available for UI update');
+            return;
+        }
+        
+        console.log(`Updating Telegram UI for screen: ${this.currentScreen} (history: ${this.history.length})`);
         
         // Show/hide back button
         if (this.currentScreen === 'categories' || this.currentScreen === 'loading') {
@@ -241,8 +260,31 @@ class Router {
             console.log('Categories loaded successfully');
         } catch (error) {
             console.error('Error loading categories:', error);
-            // Fall back to static categories if API fails
-            this.setupEventListeners();
+            this.showApiErrorMessage();
+        }
+    }
+    
+    showApiErrorMessage() {
+        const categoriesGrid = document.querySelector('.categories-grid');
+        if (!categoriesGrid) return;
+        
+        categoriesGrid.innerHTML = `
+            <div class="error-message">
+                <div class="error-icon">⚠️</div>
+                <h3>Тимчасові технічні проблеми</h3>
+                <p>Вибачте, зараз виникли проблеми з завантаженням каталогу товарів.</p>
+                <p>Спробуйте оновити сторінку або зверніться до адміністратора.</p>
+                <button class="retry-button" onclick="window.location.reload()">
+                    Оновити сторінку
+                </button>
+            </div>
+        `;
+        
+        // Show Telegram alert as well
+        if (window.telegramWebApp) {
+            window.telegramWebApp.showAlert(
+                'Виникли технічні проблеми. Адміністратора повідомлено про помилку. Спробуйте пізніше.'
+            );
         }
     }
     

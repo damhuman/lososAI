@@ -1,14 +1,22 @@
 // Telegram Web App integration
 class TelegramWebApp {
     constructor() {
+        console.log('TelegramWebApp constructor called');
+        console.log('window.Telegram:', window.Telegram);
+        console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
+        
         this.tg = window.Telegram?.WebApp;
         this.user = null;
         this.initData = '';
         
         if (!this.tg) {
             console.error('Telegram WebApp is not available');
+            console.error('Available Telegram object:', window.Telegram);
             return;
         }
+        
+        console.log('Telegram WebApp object:', this.tg);
+        console.log('BackButton object:', this.tg.BackButton);
         
         this.init();
     }
@@ -27,9 +35,11 @@ class TelegramWebApp {
         this.user = this.tg.initDataUnsafe?.user;
         this.initData = this.tg.initData;
         
-        // Set up navigation
-        this.setupBackButton();
+        // Set up main button first (doesn't depend on router)
         this.setupMainButton();
+        
+        // Set up back button - will retry if router not ready
+        this.setupBackButtonWhenReady();
         
         // Enable closing confirmation
         this.tg.enableClosingConfirmation();
@@ -66,11 +76,51 @@ class TelegramWebApp {
         }
     }
     
-    setupBackButton() {
-        // Handle back button
-        this.tg.BackButton.onClick(() => {
-            window.router?.goBack();
+    setupBackButtonWhenReady() {
+        // Much simpler approach - just set it up when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                this.setupBackButton();
+            }, 2000); // Wait 2 seconds for everything to load
         });
+        
+        // Also try immediately if DOM already loaded
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(() => {
+                this.setupBackButton();
+            }, 2000);
+        }
+    }
+    
+    setupBackButton() {
+        console.log('Setting up back button...');
+        
+        if (!this.tg || !this.tg.BackButton) {
+            console.error('Telegram BackButton not available');
+            return;
+        }
+        
+        try {
+            // Simple direct approach
+            window.Telegram.WebApp.BackButton.onClick(function() {
+                console.log('>>> BACK BUTTON CLICKED <<<');
+                
+                // Simple fallback navigation
+                if (window.router && window.router.goBack) {
+                    console.log('Using router.goBack()');
+                    window.router.goBack();
+                } else {
+                    console.log('Router not available, going to categories');
+                    if (window.router && window.router.navigateTo) {
+                        window.router.navigateTo('categories');
+                    }
+                }
+            });
+            
+            console.log('✅ Back button handler set up');
+        } catch (error) {
+            console.error('❌ Error setting up back button:', error);
+        }
     }
     
     setupMainButton() {
@@ -91,14 +141,34 @@ class TelegramWebApp {
                 this.submitOrder();
             }
         });
+        
+        // Handle popup events
+        this.tg.onEvent('popupClosed', (eventData) => {
+            console.log('Popup closed with button:', eventData.button_id);
+            
+            if (eventData.button_id === 'goto_cart') {
+                console.log('Navigating to cart...');
+                window.router?.navigateTo('cart');
+            }
+        });
     }
     
     showBackButton() {
-        this.tg.BackButton.show();
+        try {
+            console.log('Showing back button');
+            this.tg.BackButton.show();
+        } catch (error) {
+            console.error('Error showing back button:', error);
+        }
     }
     
     hideBackButton() {
-        this.tg.BackButton.hide();
+        try {
+            console.log('Hiding back button');
+            this.tg.BackButton.hide();
+        } catch (error) {
+            console.error('Error hiding back button:', error);
+        }
     }
     
     showMainButton(text = 'Продовжити') {
@@ -163,7 +233,7 @@ class TelegramWebApp {
     }
     
     showPopup(title, message, buttons = [{ type: 'close' }]) {
-        this.tg.showPopup({
+        return this.tg.showPopup({
             title: title,
             message: message,
             buttons: buttons
@@ -192,4 +262,22 @@ class TelegramWebApp {
 }
 
 // Initialize Telegram WebApp
+console.log('Initializing Telegram WebApp...');
 window.telegramWebApp = new TelegramWebApp();
+
+// Global test function for debugging
+window.testBackButton = function() {
+    console.log('=== TESTING BACK BUTTON ===');
+    console.log('Telegram:', window.Telegram);
+    console.log('WebApp:', window.Telegram?.WebApp);
+    console.log('BackButton:', window.Telegram?.WebApp?.BackButton);
+    
+    if (window.Telegram?.WebApp?.BackButton) {
+        console.log('✅ BackButton is available');
+        console.log('Trying to show back button...');
+        window.Telegram.WebApp.BackButton.show();
+        console.log('Back button should now be visible');
+    } else {
+        console.log('❌ BackButton not available');
+    }
+};

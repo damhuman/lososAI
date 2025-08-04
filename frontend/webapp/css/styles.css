@@ -64,27 +64,42 @@ body {
 .loading-logo {
   width: 120px;
   height: 120px;
+  max-width: 25vw;
+  max-height: 25vw;
   margin-bottom: 20px;
   border-radius: 20px;
   box-shadow: 0 4px 12px var(--shadow-color);
+  object-fit: contain;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .header-logo {
   width: 80px;
   height: 80px;
+  max-width: 20vw;
+  max-height: 20vw;
   margin-bottom: 16px;
   border-radius: 16px;
   box-shadow: 0 2px 8px var(--shadow-color);
+  object-fit: contain;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .header-logo-small {
   width: 40px;
   height: 40px;
+  max-width: 15vw;
+  max-height: 15vw;
   margin-bottom: 8px;
   border-radius: 8px;
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 8px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  object-fit: contain;
 }
 
 /* Loading screen */
@@ -634,6 +649,60 @@ body {
   margin-bottom: 0;
 }
 
+/* Error message styles */
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  min-height: 300px;
+  background: rgba(220, 53, 69, 0.05);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-message h3 {
+  color: var(--text-color);
+  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.error-message p {
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.retry-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #1e7bb8;
+}
+
+.retry-button:active {
+  background: #1a6ba3;
+}
+
 /* Responsive design */
 @media (max-width: 480px) {
   .screen {
@@ -647,6 +716,57 @@ body {
   .category-card {
     padding: 16px;
   }
+  
+  /* Responsive logo sizing for mobile */
+  .loading-logo {
+    width: 80px;
+    height: 80px;
+    max-width: 20vw;
+    max-height: 20vw;
+  }
+  
+  .header-logo {
+    width: 60px;
+    height: 60px;
+    max-width: 15vw;
+    max-height: 15vw;
+  }
+  
+  .header-logo-small {
+    width: 32px;
+    height: 32px;
+    max-width: 12vw;
+    max-height: 12vw;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Portrait orientation specific styles */
+@media (orientation: portrait) and (max-height: 700px) {
+  .loading-logo {
+    width: 70px;
+    height: 70px;
+    max-width: 18vw;
+    max-height: 15vh;
+  }
+  
+  .header-logo {
+    width: 50px;
+    height: 50px;
+    max-width: 15vw;
+    max-height: 12vh;
+  }
+  
+  .header-logo-small {
+    width: 28px;
+    height: 28px;
+    max-width: 10vw;
+    max-height: 8vh;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
   
   .category-icon {
     font-size: 28px;

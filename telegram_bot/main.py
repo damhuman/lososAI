@@ -21,6 +21,12 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     
+    # Add middleware to log all messages
+    @dp.message.middleware()
+    async def log_messages(handler, event, data):
+        logger.info(f"📨 Received message: {event}")
+        return await handler(event, data)
+    
     # Include routers
     dp.include_router(router)
     

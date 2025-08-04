@@ -32,13 +32,57 @@ class ApiClient {
             
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `HTTP ${response.status}`);
+                const error = new Error(errorData.detail || `HTTP ${response.status}`);
+                
+                // Report error to backend for admin notification
+                this.reportError('API_ERROR', `${endpoint}: ${error.message}`, {
+                    status: response.status,
+                    url: url
+                });
+                
+                throw error;
             }
             
             return await response.json();
         } catch (error) {
             console.error(`API request failed: ${endpoint}`, error);
+            
+            // Report network errors too
+            if (error.name === 'TypeError' || error.message.includes('fetch')) {
+                this.reportError('NETWORK_ERROR', `${endpoint}: ${error.message}`, {
+                    url: url
+                });
+            }
+            
             throw error;
+        }
+    }
+    
+    async reportError(errorType, message, metadata = {}) {
+        try {
+            // Don't report errors for the error reporting endpoint itself
+            if (message.includes('/errors/report')) return;
+            
+            const errorData = {
+                error_type: errorType,
+                message: message,
+                user_id: window.telegramWebApp?.getInitDataUnsafe()?.user?.id?.toString(),
+                url: window.location.href,
+                user_agent: navigator.userAgent,
+                timestamp: new Date().toISOString(),
+                metadata: metadata
+            };
+            
+            // Use a simple fetch to avoid recursion
+            await fetch(`${this.baseURL}/errors/report`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(errorData)
+            });
+        } catch (e) {
+            console.error('Failed to report error:', e);
         }
     }
     

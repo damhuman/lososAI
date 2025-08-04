@@ -113,9 +113,18 @@ class SeafoodStoreApp {
         });
         
         // Add to cart button
-        document.getElementById('add-to-cart-btn')?.addEventListener('click', () => {
-            this.addToCart();
-        });
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+        console.log('Add to cart button element:', addToCartBtn);
+        
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', () => {
+                console.log('Add to cart button clicked!');
+                this.addToCart();
+            });
+            console.log('Add to cart event listener attached');
+        } else {
+            console.log('Add to cart button not found!');
+        }
         
         // Debug navigation button
         document.getElementById('debug-nav')?.addEventListener('click', () => {
@@ -205,10 +214,32 @@ class SeafoodStoreApp {
             document.getElementById('quantity-input').value = 1;
             this.updateTotalPrice();
             
+            // Set up Add to Cart button event listener (do it here when screen is active)
+            this.setupAddToCartButton();
+            
         } catch (error) {
             console.error('Error loading product detail:', error);
             window.telegramWebApp?.showAlert('Помилка завантаження товару');
             window.router.goBack();
+        }
+    }
+    
+    setupAddToCartButton() {
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+        console.log('Setting up Add to Cart button:', addToCartBtn);
+        
+        if (addToCartBtn) {
+            // Remove any existing event listeners
+            addToCartBtn.replaceWith(addToCartBtn.cloneNode(true));
+            const newBtn = document.getElementById('add-to-cart-btn');
+            
+            newBtn.addEventListener('click', () => {
+                console.log('Add to cart button clicked!');
+                this.addToCart();
+            });
+            console.log('Add to cart event listener attached to button');
+        } else {
+            console.log('Add to cart button not found when setting up!');
         }
     }
     
@@ -276,17 +307,27 @@ class SeafoodStoreApp {
     }
     
     addToCart() {
+        console.log('>>> ADD TO CART CLICKED <<<');
+        console.log('Current product:', this.currentProduct);
+        console.log('Selected package:', this.selectedPackage);
+        
         if (!this.currentProduct || !this.selectedPackage) {
+            console.log('Missing product or package');
             window.telegramWebApp?.showAlert('Оберіть фасування товару');
             return;
         }
         
         const quantity = parseInt(document.getElementById('quantity-input').value) || 1;
+        console.log('Quantity:', quantity);
+        console.log('Cart object:', window.cart);
         
         window.cart.addItem(this.currentProduct, this.selectedPackage, quantity);
+        console.log('Item added to cart, current cart:', window.cart.getItems());
         
         // Show success feedback
         window.telegramWebApp?.hapticFeedback('success');
+        
+        // Show popup - navigation is handled by the telegram.js event listener
         window.telegramWebApp?.showPopup(
             'Додано до кошика',
             `${this.currentProduct.name} (${this.selectedPackage.weight} ${this.selectedPackage.unit}) x${quantity}`,
@@ -294,11 +335,9 @@ class SeafoodStoreApp {
                 { type: 'default', text: 'Продовжити покупки' },
                 { type: 'default', text: 'Перейти до кошика', id: 'goto_cart' }
             ]
-        ).then((buttonId) => {
-            if (buttonId === 'goto_cart') {
-                window.router.navigateTo('cart');
-            }
-        });
+        );
+        
+        console.log('Popup shown, waiting for user action...');
     }
     
     async validatePromoCode() {

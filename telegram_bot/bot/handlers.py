@@ -32,18 +32,33 @@ async def cmd_start(message: Message, state: FSMContext):
     
     keyboard = get_main_keyboard()
     
+    print(f"🚀 /start command from user {message.from_user.id} ({message.from_user.first_name})")
+    
     await message.answer(
         WELCOME_MESSAGE,
         reply_markup=keyboard
     )
 
+@router.message()
+async def handle_any_message(message: Message):
+    """Handle any other message for debugging"""
+    print(f"📨 Received message from {message.from_user.id}: {message.text}")
+    if message.web_app_data:
+        print(f"🌐 Has web app data: {message.web_app_data.data}")
+    else:
+        print("❌ No web app data in this message")
+
 
 @router.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
     """Handle data from Web App (order submission)"""
+    print(f"📱 Received web app data from user {message.from_user.id}")
+    print(f"📝 Raw data: {message.web_app_data.data}")
+    
     try:
         # Parse order data from Web App
         order_data = json.loads(message.web_app_data.data)
+        print(f"📦 Parsed order data: {order_data}")
         
         # Extract order information
         user_id = order_data.get("user_id")
@@ -52,6 +67,10 @@ async def handle_web_app_data(message: Message):
         delivery = order_data.get("delivery", {})
         total = order_data.get("total", 0)
         promo_code = order_data.get("promo_code")
+        
+        print(f"👤 Order from: {user_name} ({user_id})")
+        print(f"📋 Items count: {len(items)}")
+        print(f"💰 Total: {total} грн")
         
         # Format order message for admin
         order_text = format_order_message(user_id, user_name, items, delivery, total, promo_code)
