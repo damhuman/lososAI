@@ -52,28 +52,54 @@ class TelegramWebApp {
         const themeParams = this.tg.themeParams;
         const root = document.documentElement;
         
-        // Apply theme colors
-        if (themeParams.bg_color) {
-            root.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
-        }
-        if (themeParams.text_color) {
-            root.style.setProperty('--tg-theme-text-color', themeParams.text_color);
-        }
-        if (themeParams.hint_color) {
-            root.style.setProperty('--tg-theme-hint-color', themeParams.hint_color);
-        }
-        if (themeParams.button_color) {
-            root.style.setProperty('--tg-theme-button-color', themeParams.button_color);
-        }
-        if (themeParams.button_text_color) {
-            root.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color);
-        }
-        if (themeParams.secondary_bg_color) {
-            root.style.setProperty('--tg-theme-secondary-bg-color', themeParams.secondary_bg_color);
-        }
-        if (themeParams.link_color) {
-            root.style.setProperty('--tg-theme-link-color', themeParams.link_color);
-        }
+        // Force light theme colors
+        root.style.setProperty('--tg-theme-bg-color', '#ffffff');
+        root.style.setProperty('--tg-theme-text-color', '#000000');
+        root.style.setProperty('--tg-theme-hint-color', '#999999');
+        root.style.setProperty('--tg-theme-button-color', '#2481cc');
+        root.style.setProperty('--tg-theme-button-text-color', '#ffffff');
+        root.style.setProperty('--tg-theme-secondary-bg-color', '#f1f1f1');
+        root.style.setProperty('--tg-theme-link-color', '#2481cc');
+    }
+    
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+    
+    isBackgroundDark() {
+        const bgColor = this.tg.themeParams.bg_color;
+        if (!bgColor) return false;
+        
+        const rgb = this.hexToRgb(bgColor);
+        if (!rgb) return false;
+        
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        return luminance < 0.5;
+    }
+    
+    isBackgroundBlue() {
+        const bgColor = this.tg.themeParams.bg_color;
+        if (!bgColor) return false;
+        
+        const rgb = this.hexToRgb(bgColor);
+        if (!rgb) return false;
+        
+        return rgb.b > rgb.r && rgb.b > rgb.g;
+    }
+    
+    getBackgroundType() {
+        const isDark = this.isBackgroundDark();
+        const isBlue = this.isBackgroundBlue();
+        
+        if (isDark && isBlue) return 'dark-blue';
+        if (isDark) return 'dark';
+        if (isBlue) return 'blue';
+        return 'light';
     }
     
     setupBackButtonWhenReady() {
