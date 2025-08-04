@@ -28,6 +28,12 @@ class SeafoodStoreApp {
                 console.log('Cart UI initialized');
             }
             
+            // Initialize cart icon
+            if (window.cart) {
+                window.cart.initializeCartIcon();
+                console.log('Cart icon initialized');
+            }
+            
             // Set up event listeners
             this.setupEventListeners();
             
@@ -323,6 +329,9 @@ class SeafoodStoreApp {
         
         window.cart.addItem(this.currentProduct, this.selectedPackage, quantity);
         console.log('Item added to cart, current cart:', window.cart.getItems());
+        
+        // Manually update badge to ensure it's refreshed
+        window.cart.updateCartBadge();
         
         // Show success feedback
         window.telegramWebApp?.hapticFeedback('success');

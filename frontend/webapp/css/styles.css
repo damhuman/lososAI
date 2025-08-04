@@ -797,3 +797,118 @@ body {
     --shadow-color: rgba(255, 255, 255, 0.1);
   }
 }
+
+/* Logo styles for themes */
+.logo-emoji {
+  display: none;
+  font-size: 80px;
+  line-height: 1;
+  text-align: center;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+}
+
+.loading-logo.logo-emoji {
+  font-size: 80px;
+}
+
+.header-logo.logo-emoji {
+  font-size: 60px;
+  width: 80px;
+  height: 80px;
+}
+
+.header-logo-small.logo-emoji {
+  font-size: 32px;
+  width: 40px;
+  height: 40px;
+}
+
+/* Theme-specific logo display */
+body.theme-dark .logo-image {
+  display: none;
+}
+
+body.theme-dark .logo-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.theme-light .logo-image {
+  display: block;
+}
+
+body.theme-light .logo-emoji {
+  display: none;
+}
+
+/* Cart icon styles */
+.cart-icon {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  color: white;
+}
+
+.cart-icon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.cart-icon:active {
+  transform: scale(0.95);
+}
+
+.cart-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  background: var(--danger-color);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.cart-badge:empty,
+.cart-badge.hidden {
+  display: none;
+}
+
+/* Hide cart icon on loading and cart screens */
+#loading.active ~ .cart-icon,
+#cart.active ~ .cart-icon {
+  display: none;
+}
+
+/* Alternative approach for better browser support */
+.screen.active#loading ~ #cart-icon,
+.screen.active#cart ~ #cart-icon {
+  display: none;
+}

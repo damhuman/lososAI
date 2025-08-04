@@ -107,6 +107,15 @@ class Router {
         // Haptic feedback
         window.telegramWebApp?.hapticFeedback('light');
         
+        // Update logos when navigating
+        window.telegramWebApp?.updateLogos();
+        
+        // Show/hide cart icon based on screen
+        const cartIcon = document.getElementById('cart-icon');
+        if (cartIcon) {
+            cartIcon.style.display = (screenName === 'loading' || screenName === 'cart') ? 'none' : 'flex';
+        }
+        
         console.log(`Successfully navigated to: ${screenName}`);
     }
     
@@ -145,6 +154,9 @@ class Router {
             
             // Notify listeners
             this.notifyListeners(previousScreen, {});
+            
+            // Update logos when going back
+            window.telegramWebApp?.updateLogos();
             
             console.log(`Successfully went back to: ${previousScreen}`);
         } else {

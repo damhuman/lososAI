@@ -58,12 +58,12 @@ class Settings(BaseSettings):
     WEB_APP_URL: str
     
     # S3 Configuration
-    S3_ENDPOINT_URL: str = "https://fra1.digitaloceanspaces.com"
-    S3_ACCESS_KEY_ID: str
-    S3_SECRET_ACCESS_KEY: str
-    S3_BUCKET_NAME: str = "losos"
-    S3_REGION: str = "fra1"
-    S3_PUBLIC_URL: str = "https://losos.fra1.digitaloceanspaces.com"
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_ACCESS_KEY_ID: Optional[str] = None
+    S3_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_BUCKET_NAME: Optional[str] = None
+    S3_REGION: Optional[str] = None
+    S3_PUBLIC_URL: Optional[str] = None
     
     class Config:
         env_file = ".env"

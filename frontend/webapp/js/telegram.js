@@ -52,14 +52,35 @@ class TelegramWebApp {
         const themeParams = this.tg.themeParams;
         const root = document.documentElement;
         
-        // Force light theme colors
-        root.style.setProperty('--tg-theme-bg-color', '#ffffff');
-        root.style.setProperty('--tg-theme-text-color', '#000000');
-        root.style.setProperty('--tg-theme-hint-color', '#999999');
-        root.style.setProperty('--tg-theme-button-color', '#2481cc');
-        root.style.setProperty('--tg-theme-button-text-color', '#ffffff');
-        root.style.setProperty('--tg-theme-secondary-bg-color', '#f1f1f1');
-        root.style.setProperty('--tg-theme-link-color', '#2481cc');
+        // Apply Telegram theme params
+        if (themeParams.bg_color) {
+            root.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
+        }
+        if (themeParams.text_color) {
+            root.style.setProperty('--tg-theme-text-color', themeParams.text_color);
+        }
+        if (themeParams.hint_color) {
+            root.style.setProperty('--tg-theme-hint-color', themeParams.hint_color);
+        }
+        if (themeParams.button_color) {
+            root.style.setProperty('--tg-theme-button-color', themeParams.button_color);
+        }
+        if (themeParams.button_text_color) {
+            root.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color);
+        }
+        if (themeParams.secondary_bg_color) {
+            root.style.setProperty('--tg-theme-secondary-bg-color', themeParams.secondary_bg_color);
+        }
+        if (themeParams.link_color) {
+            root.style.setProperty('--tg-theme-link-color', themeParams.link_color);
+        }
+        
+        // Detect theme and apply class
+        const isDark = this.isBackgroundDark();
+        document.body.classList.add(isDark ? 'theme-dark' : 'theme-light');
+        
+        // Update all logos based on theme
+        this.updateLogos();
     }
     
     hexToRgb(hex) {
@@ -175,6 +196,34 @@ class TelegramWebApp {
             if (eventData.button_id === 'goto_cart') {
                 console.log('Navigating to cart...');
                 window.router?.navigateTo('cart');
+            }
+        });
+    }
+    
+    updateLogos() {
+        // This function will be called to update all logo elements on the page
+        const isDark = this.isBackgroundDark();
+        const logos = document.querySelectorAll('.loading-logo, .header-logo, .header-logo-small');
+        
+        logos.forEach(logo => {
+            if (isDark) {
+                // For dark theme, show emoji placeholder
+                logo.style.display = 'none';
+                let emojiLogo = logo.nextElementSibling;
+                if (!emojiLogo || !emojiLogo.classList.contains('logo-emoji')) {
+                    emojiLogo = document.createElement('div');
+                    emojiLogo.className = logo.className + ' logo-emoji';
+                    emojiLogo.textContent = '🐟'; // Fish emoji as placeholder
+                    logo.parentNode.insertBefore(emojiLogo, logo.nextSibling);
+                }
+                emojiLogo.style.display = 'flex';
+            } else {
+                // For light theme, show regular logo
+                logo.style.display = 'block';
+                const emojiLogo = logo.nextElementSibling;
+                if (emojiLogo && emojiLogo.classList.contains('logo-emoji')) {
+                    emojiLogo.style.display = 'none';
+                }
             }
         });
     }

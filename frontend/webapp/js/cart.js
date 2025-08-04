@@ -20,6 +20,19 @@ class ShoppingCart {
     
     notifyListeners() {
         this.listeners.forEach(callback => callback(this.items));
+        // Update cart badge
+        this.updateCartBadge();
+    }
+    
+    updateCartBadge() {
+        const badge = document.getElementById('cart-badge');
+        console.log('Updating cart badge, element found:', !!badge);
+        if (badge) {
+            const itemCount = this.getItemCount();
+            console.log('Cart item count:', itemCount);
+            badge.textContent = itemCount > 0 ? itemCount.toString() : '';
+            badge.classList.toggle('hidden', itemCount === 0);
+        }
     }
     
     // Storage management
@@ -41,6 +54,8 @@ class ShoppingCart {
             console.error('Failed to load cart from storage:', error);
             this.items = [];
         }
+        // Update badge on load
+        this.updateCartBadge();
     }
     
     clearStorage() {
@@ -118,13 +133,27 @@ class ShoppingCart {
         this.notifyListeners();
     }
     
+    // Initialize cart icon click handler
+    initializeCartIcon() {
+        const cartIcon = document.getElementById('cart-icon');
+        if (cartIcon) {
+            cartIcon.addEventListener('click', () => {
+                window.router?.navigateTo('cart');
+                window.telegramWebApp?.hapticFeedback('light');
+            });
+        }
+    }
+    
     // Getters
     getItems() {
         return [...this.items];
     }
     
     getItemCount() {
-        return this.items.reduce((total, item) => total + item.quantity, 0);
+        // Count unique items (positions) in cart, not total quantity
+        const count = this.items.length;
+        console.log('getItemCount - unique items:', count);
+        return count;
     }
     
     getTotalPrice() {
