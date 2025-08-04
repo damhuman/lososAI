@@ -163,10 +163,27 @@ class SeafoodStoreApp {
         switch (screenName) {
             case 'product-detail':
                 if (data.productId) {
-                    await this.loadProductDetail(data.productId);
+                    // Small delay to ensure screen is visible
+                    setTimeout(() => {
+                        this.loadProductDetail(data.productId);
+                    }, 100);
                 }
                 break;
+            case 'cart':
+                // Update cart UI when navigating to cart
+                window.cartUI?.updateUI();
+                break;
+            case 'checkout':
+                // Show main button for checkout
+                this.setupCheckoutMainButton();
+                break;
         }
+    }
+    
+    setupCheckoutMainButton() {
+        // Main button is already set up in router.js updateTelegramUI
+        // Just ensure checkout form validation
+        this.validateCheckoutForm();
     }
     
     async loadProductDetail(productId) {

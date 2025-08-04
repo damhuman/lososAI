@@ -14,8 +14,17 @@ load_dotenv()
 # Database connection
 DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, echo=False)
 Session = sessionmaker(bind=engine)
+
+# Ensure tables exist by creating metadata
+from models import Base
+try:
+    Base.metadata.bind = engine
+    # Don't create tables, they should already exist from backend
+    # Base.metadata.create_all(engine)
+except Exception as e:
+    print(f"Warning: Could not bind metadata: {e}")
 
 # Flask app setup
 app = Flask(__name__)
@@ -114,13 +123,16 @@ admin = Admin(app, name='Seafood Store Admin',
 # Add model views (import local models)
 from models import Order, OrderItem, Category, Product, District, PromoCode, User as UserModel
 
-admin.add_view(OrderView(Order, Session(), name='Orders', category='Store'))
-admin.add_view(SecureModelView(OrderItem, Session(), name='Order Items', category='Store'))
-admin.add_view(ProductView(Product, Session(), name='Products', category='Catalog'))
-admin.add_view(SecureModelView(Category, Session(), name='Categories', category='Catalog'))
-admin.add_view(SecureModelView(District, Session(), name='Districts', category='Settings'))
-admin.add_view(SecureModelView(PromoCode, Session(), name='Promo Codes', category='Settings'))
-admin.add_view(UserView(UserModel, Session(), name='Users', category='Users'))
+# Create a session instance for Flask-Admin
+db_session = Session()
+
+admin.add_view(OrderView(Order, db_session, name='Orders', category='Store'))
+admin.add_view(SecureModelView(OrderItem, db_session, name='Order Items', category='Store'))
+admin.add_view(ProductView(Product, db_session, name='Products', category='Catalog'))
+admin.add_view(SecureModelView(Category, db_session, name='Categories', category='Catalog'))
+admin.add_view(SecureModelView(District, db_session, name='Districts', category='Settings'))
+admin.add_view(SecureModelView(PromoCode, db_session, name='Promo Codes', category='Settings'))
+admin.add_view(UserView(UserModel, db_session, name='Users', category='Users'))
 
 # Login routes
 @app.route('/login', methods=['GET', 'POST'])

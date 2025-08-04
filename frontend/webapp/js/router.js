@@ -115,14 +115,19 @@ class Router {
             // Hide current screen
             if (this.screens[this.currentScreen]) {
                 this.screens[this.currentScreen].classList.remove('active');
+                this.screens[this.currentScreen].style.display = 'none';
             }
             
             // Show previous screen
             this.currentScreen = previousScreen;
             this.screens[previousScreen].classList.add('active');
+            this.screens[previousScreen].style.display = 'block';
             
             // Update Telegram UI
             this.updateTelegramUI();
+            
+            // Reload screen data if needed
+            this.loadScreenData(previousScreen, {});
             
             // Notify listeners
             this.notifyListeners(previousScreen, {});
@@ -201,8 +206,54 @@ class Router {
     }
     
     async loadCategories() {
-        // Categories are already in HTML, but we could load them dynamically
-        console.log('Categories screen loaded');
+        try {
+            console.log('Loading categories from API...');
+            const categories = await window.apiService.getCategories();
+            const categoriesGrid = document.querySelector('.categories-grid');
+            
+            if (!categoriesGrid) {
+                console.error('Categories grid container not found');
+                return;
+            }
+            
+            // Clear existing static categories
+            categoriesGrid.innerHTML = '';
+            
+            // Add categories from API
+            categories.forEach(category => {
+                const categoryCard = document.createElement('div');
+                categoryCard.className = 'category-card';
+                categoryCard.dataset.category = category.id;
+                
+                categoryCard.innerHTML = `
+                    <div class="category-icon">${category.icon}</div>
+                    <h3>${category.name}</h3>
+                    <p>${category.description || this.getCategoryDescription(category.id)}</p>
+                `;
+                
+                categoryCard.addEventListener('click', () => {
+                    this.navigateTo('products', { categoryId: category.id });
+                });
+                
+                categoriesGrid.appendChild(categoryCard);
+            });
+            
+            console.log('Categories loaded successfully');
+        } catch (error) {
+            console.error('Error loading categories:', error);
+            // Fall back to static categories if API fails
+            this.setupEventListeners();
+        }
+    }
+    
+    getCategoryDescription(categoryId) {
+        const descriptions = {
+            'salmon': 'Солений, копчений, холоджений',
+            'shellfish': 'Креветки, мідії та інше',
+            'tomyum': 'Все для приготування супу',
+            'caviar': 'Різні види ікри'
+        };
+        return descriptions[categoryId] || '';
     }
     
     async loadProducts(categoryId) {

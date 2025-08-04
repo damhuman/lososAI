@@ -2,12 +2,12 @@
 BEGIN;
 
 -- Categories
-INSERT INTO categories (id, name, icon, "order", is_active) VALUES
-('salmon', 'Лосось', '🐟', 1, true),
-('shellfish', 'Молюски', '🦐', 2, true),
-('tomyum', 'Том Ям набори', '🍲', 3, true),
-('caviar', 'Ікра', '🥚', 4, true)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO categories (id, name, description, icon, "order", is_active) VALUES
+('salmon', 'Лосось', 'Солений, копчений, холоджений', '🐟', 1, true),
+('shellfish', 'Молюски', 'Креветки, мідії та інше', '🦐', 2, true),
+('tomyum', 'Том Ям набори', 'Все для приготування супу', '🍲', 3, true),
+('caviar', 'Ікра', 'Різні види ікри', '🥚', 4, true)
+ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description;
 
 -- Districts  
 INSERT INTO districts (name, is_active, delivery_cost) VALUES

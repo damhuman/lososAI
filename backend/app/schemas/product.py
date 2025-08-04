@@ -13,6 +13,7 @@ class PackageInfo(BaseModel):
 class CategoryBase(BaseModel):
     id: str
     name: str
+    description: Optional[str] = None
     icon: str
     order: int = 0
 

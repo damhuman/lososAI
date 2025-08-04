@@ -9,6 +9,7 @@ class Category(Base):
     
     id = Column(String, primary_key=True)  # e.g., "salmon", "shellfish"
     name = Column(String, nullable=False)
+    description = Column(String, nullable=True)  # Category description
     icon = Column(String, nullable=False)  # emoji
     order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
@@ -43,7 +44,7 @@ class Product(Base):
     
     # Relationships
     category = relationship("Category", back_populates="products")
-    # order_items = relationship("OrderItem", back_populates="product")  # Disabled to avoid circular import
+    order_items = relationship("OrderItem", back_populates="product")
     
     def __repr__(self):
         return f"<Product {self.id}: {self.name}>"
@@ -57,8 +58,8 @@ class District(Base):
     is_active = Column(Boolean, default=True)
     delivery_cost = Column(Float, default=0)  # Additional delivery cost if any
     
-    # Relationships
-    # orders = relationship("Order", back_populates="district")  # Disabled to avoid circular import
+    # Relationships - using string reference to avoid circular import
+    orders = relationship("Order", back_populates="district")
     
     def __repr__(self):
         return f"<District {self.id}: {self.name}>"

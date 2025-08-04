@@ -26,6 +26,7 @@ class Category(Base):
     
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     icon = Column(String, nullable=False)
     order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
