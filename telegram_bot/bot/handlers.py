@@ -72,28 +72,17 @@ async def handle_web_app_data(message: Message):
         print(f"📋 Items count: {len(items)}")
         print(f"💰 Total: {total} грн")
         
-        # Format order message for admin
-        order_text = format_order_message(user_id, user_name, items, delivery, total, promo_code)
+        # Submit order to backend API - backend will handle messaging
+        backend_result = await submit_order_to_backend(order_data)
         
-        # Send order confirmation to user
-        await message.answer(
-            "✅ Дякуємо за замовлення!\n\n"
-            "Ваше замовлення прийнято і передано менеджеру. "
-            "Незабаром з вами зв'яжуться для підтвердження деталей доставки.\n\n"
-            f"Сума замовлення: {total} грн"
-        )
-        
-        # Forward order to admin if configured
-        if ADMIN_CHAT_ID:
-            keyboard = get_admin_order_keyboard(0)  # We'll need order ID from backend
-            await message.bot.send_message(
-                chat_id=ADMIN_CHAT_ID,
-                text=f"🆕 Нове замовлення!\n\n{order_text}",
-                reply_markup=keyboard
+        if backend_result:
+            print(f"✅ Order submitted successfully to backend")
+            # Backend handles all messaging now
+        else:
+            # Fallback message if backend submission fails
+            await message.answer(
+                "❌ Виникла помилка при обробці замовлення. Спробуйте ще раз."
             )
-        
-        # Submit order to backend API
-        await submit_order_to_backend(order_data)
         
     except json.JSONDecodeError:
         await message.answer(
@@ -186,28 +175,51 @@ def format_order_message(user_id: int, user_name: str, items: list, delivery: di
 async def submit_order_to_backend(order_data: dict):
     """Submit order to backend API"""
     try:
+        print(f"🔄 Submitting order to backend: {BACKEND_API_URL}/orders/")
+        print(f"📊 Order data keys: {list(order_data.keys())}")
+        print(f"👤 User: {order_data.get('user_name')} (ID: {order_data.get('user_id')})")
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{BACKEND_API_URL}/orders",
+                f"{BACKEND_API_URL}/orders/",
                 json=order_data,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"tma {order_data.get('init_data', '')}"
                 }
             )
+            print(f"📊 Backend response status: {response.status_code}")
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            print(f"✅ Backend returned: order #{result.get('order_id', 'unknown')}")
+            return result
     except Exception as e:
-        print(f"Error submitting order to backend: {e}")
+        print(f"❌ Error submitting order to backend: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
 async def update_order_status(order_id: str, status: str):
-    """Update order status in backend"""
+    """Update order status in backend by order_id"""
     try:
         async with httpx.AsyncClient() as client:
+            # First find the order by order_id
+            response = await client.get(
+                f"{BACKEND_API_URL}/admin/orders",
+                params={"order_id": order_id}
+            )
+            response.raise_for_status()
+            orders = response.json()
+            
+            if not orders:
+                print(f"Order #{order_id} not found")
+                return None
+            
+            order = orders[0]
+            # Update using internal ID
             response = await client.patch(
-                f"{BACKEND_API_URL}/admin/orders/{order_id}",
+                f"{BACKEND_API_URL}/admin/orders/{order['id']}",
                 json={"status": status}
             )
             response.raise_for_status()

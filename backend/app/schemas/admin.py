@@ -117,6 +117,7 @@ class OrderItemResponse(BaseModel):
 
 class OrderResponse(BaseModel):
     id: int
+    order_id: int
     user_id: int
     status: str
     total_amount: float

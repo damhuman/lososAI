@@ -2,7 +2,7 @@ from typing import List
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_async_session, get_current_user
@@ -10,8 +10,22 @@ from app.db.models.user import User
 from app.db.models.order import Order, OrderItem, OrderStatus, DeliveryTimeSlot
 from app.db.models.product import District, PromoCode
 from app.schemas.order import OrderCreate, Order as OrderSchema, OrderSummary
+from app.services.messaging import messaging_service
 
 router = APIRouter()
+
+
+async def get_next_order_id(session: AsyncSession) -> int:
+    """Get the next order ID starting from 100"""
+    result = await session.execute(
+        select(func.max(Order.order_id))
+    )
+    max_order_id = result.scalar()
+    
+    if max_order_id is None:
+        return 100
+    else:
+        return max_order_id + 1
 
 
 @router.post("/", response_model=OrderSchema)
@@ -21,6 +35,8 @@ async def create_order(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Create a new order"""
+    print(f"🚀 Order creation started for user {current_user.id} ({current_user.first_name})")
+    print(f"📊 Order data: {len(order_data.items)} items, total: {order_data.total}")
     
     # Validate district
     district_name = order_data.delivery.get("district")
@@ -103,9 +119,13 @@ async def create_order(
             # Update promo usage
             promo.usage_count += 1
     
+    # Get next order ID
+    next_order_id = await get_next_order_id(session)
+    
     # Create order
     order = Order(
         user_id=current_user.id,
+        order_id=next_order_id,
         status=OrderStatus.PENDING,
         total_amount=order_data.total - discount_amount,
         promo_code_used=order_data.promo_code,
@@ -142,6 +162,24 @@ async def create_order(
     # Load relationships
     await session.refresh(order, ["items", "district"])
     
+    # Send confirmation messages
+    try:
+        print(f"📤 Sending order confirmation messages for order #{order.order_id}")
+        
+        # Send confirmation to client
+        client_result = await messaging_service.send_order_confirmation_to_client(order)
+        print(f"📱 Client message result: {client_result}")
+        
+        # Send notification to admin
+        admin_result = await messaging_service.send_order_notification_to_admin(order)
+        print(f"👨‍💼 Admin message result: {admin_result}")
+        
+    except Exception as e:
+        # Log error but don't fail the order creation
+        print(f"💥 Error sending order messages: {e}")
+        import traceback
+        traceback.print_exc()
+    
     return order
 
 
@@ -170,6 +208,7 @@ async def get_user_orders(
         
         order_summaries.append(OrderSummary(
             id=order.id,
+            order_id=order.order_id,
             user_id=order.user_id,
             status=order.status,
             total_amount=order.total_amount,
