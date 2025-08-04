@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, DateTime, Boolean
+from sqlalchemy import Column, BigInteger, String, DateTime, Boolean, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -19,6 +19,11 @@ class User(Base):
     phone = Column(String, nullable=True)
     is_gold_client = Column(Boolean, default=False)
     is_blocked = Column(Boolean, default=False)
+    
+    # Bot interaction tracking
+    bot_interactions_count = Column(Integer, default=0)
+    last_bot_interaction = Column(DateTime(timezone=True), nullable=True)
+    first_bot_interaction = Column(DateTime(timezone=True), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

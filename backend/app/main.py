@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 import os
 
 from app.core.config import settings
-from app.api.endpoints import categories, products, orders, districts, promo, admin, errors
+from app.api.endpoints import categories, products, orders, districts, promo, admin, errors, bot
 
 # Create FastAPI app
 app = FastAPI(
@@ -31,6 +31,7 @@ app.include_router(districts.router, prefix=f"{settings.API_V1_STR}/districts", 
 app.include_router(promo.router, prefix=f"{settings.API_V1_STR}/promo", tags=["promo"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(errors.router, prefix=f"{settings.API_V1_STR}/errors", tags=["errors"])
+app.include_router(bot.router, prefix=f"{settings.API_V1_STR}/bot", tags=["bot"])
 
 # Serve static files (for product images)
 if os.path.exists("static"):

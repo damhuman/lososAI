@@ -30,6 +30,9 @@ async def cmd_start(message: Message, state: FSMContext):
     """Handle /start command"""
     await state.clear()
     
+    # Record user interaction
+    await record_user_interaction(message.from_user, "start", message.text)
+    
     keyboard = get_main_keyboard()
     
     print(f"🚀 /start command from user {message.from_user.id} ({message.from_user.first_name})")
@@ -42,6 +45,9 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.message()
 async def handle_any_message(message: Message):
     """Handle any other message for debugging"""
+    # Record user interaction
+    await record_user_interaction(message.from_user, "message", message.text)
+    
     print(f"📨 Received message from {message.from_user.id}: {message.text}")
     if message.web_app_data:
         print(f"🌐 Has web app data: {message.web_app_data.data}")
@@ -52,6 +58,9 @@ async def handle_any_message(message: Message):
 @router.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
     """Handle data from Web App (order submission)"""
+    # Record user interaction
+    await record_user_interaction(message.from_user, "web_app", "Order submission")
+    
     print(f"📱 Received web app data from user {message.from_user.id}")
     print(f"📝 Raw data: {message.web_app_data.data}")
     
@@ -98,6 +107,9 @@ async def handle_web_app_data(message: Message):
 @router.callback_query(F.data.startswith("confirm_order:"))
 async def confirm_order(callback: CallbackQuery):
     """Handle order confirmation by admin"""
+    # Record user interaction
+    await record_user_interaction(callback.from_user, "callback", f"confirm_order:{callback.data}")
+    
     order_id = callback.data.split(":")[1]
     
     # Update order status in backend
@@ -113,6 +125,9 @@ async def confirm_order(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("cancel_order:"))
 async def cancel_order(callback: CallbackQuery):
     """Handle order cancellation by admin"""
+    # Record user interaction
+    await record_user_interaction(callback.from_user, "callback", f"cancel_order:{callback.data}")
+    
     order_id = callback.data.split(":")[1]
     
     # Update order status in backend
@@ -128,6 +143,9 @@ async def cancel_order(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("contact_client:"))
 async def contact_client(callback: CallbackQuery):
     """Handle contact client request"""
+    # Record user interaction
+    await record_user_interaction(callback.from_user, "callback", f"contact_client:{callback.data}")
+    
     order_id = callback.data.split(":")[1]
     
     await callback.answer(
@@ -197,6 +215,40 @@ async def submit_order_to_backend(order_data: dict):
         print(f"❌ Error submitting order to backend: {e}")
         import traceback
         traceback.print_exc()
+        return None
+
+
+async def record_user_interaction(user, interaction_type: str, message_text: str = None):
+    """Record user interaction with the bot in backend"""
+    try:
+        user_data = {
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "username": user.username,
+                "language_code": user.language_code,
+                "is_bot": user.is_bot
+            },
+            "interaction_type": interaction_type,
+            "message_text": message_text
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{BACKEND_API_URL}/bot/interactions",
+                json=user_data,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code == 200:
+                result = response.json()
+                print(f"📊 Recorded interaction for {user.first_name} ({user.id}): {interaction_type}")
+                return result
+            else:
+                print(f"⚠️ Failed to record interaction: {response.status_code}")
+                return None
+    except Exception as e:
+        print(f"❌ Error recording user interaction: {e}")
         return None
 
 

@@ -19,7 +19,9 @@ services:
 
   # Backend API
   backend:
-    image: registry.digitalocean.com/losos/backend:latest
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -54,7 +56,9 @@ services:
 
   # Telegram Bot
   telegram-bot:
-    image: registry.digitalocean.com/losos/telegram-bot:latest
+    build:
+      context: ./telegram_bot
+      dockerfile: ../docker/bot.Dockerfile
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - WEB_APP_URL=${WEB_APP_URL}
@@ -68,7 +72,9 @@ services:
 
   # React Admin Panel
   admin-react:
-    image: registry.digitalocean.com/losos/admin-react:latest
+    build:
+      context: ./admin-panel
+      dockerfile: ../docker/admin-react.Dockerfile
     restart: unless-stopped
     networks:
       - losos-network
