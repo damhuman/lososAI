@@ -17,21 +17,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN adduser --disabled-password --gecos '' appuser
+
+# Copy Python packages from builder to appuser's home
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
 # Add user binaries to PATH
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Copy application code
 COPY . .
 
-# Create static directory for frontend
-RUN mkdir -p static
+# Create static directory for frontend and set ownership
+RUN mkdir -p static && chown -R appuser:appuser /app
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
+# Switch to non-root user
 USER appuser
 
 # Expose port

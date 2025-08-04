@@ -131,7 +131,13 @@ const Products: React.FC = () => {
       const productData = {
         ...values,
         image_url: imageUrl,
-        packages: values.packages.filter((pkg: PackageInfo) => pkg.id && pkg.weight > 0)
+        packages: values.packages
+          .filter((pkg: any) => pkg.id && pkg.weight > 0)
+          .map((pkg: any) => ({
+            ...pkg,
+            type: pkg.type || `${pkg.weight}${pkg.unit}`,
+            price: pkg.price || (values.price_per_kg * pkg.weight)
+          }))
       };
       
       if (editingProduct) {
@@ -420,14 +426,22 @@ const Products: React.FC = () => {
                       </Button>
                     }
                   >
-                    <Space align="baseline" style={{ display: 'flex', marginBottom: 8 }}>
+                    <Space align="baseline" style={{ display: 'flex', marginBottom: 8, flexWrap: 'wrap' }}>
                       <Form.Item
                         {...restField}
                         name={[name, 'id']}
                         label="ID"
                         rules={[{ required: true, message: 'ID обов\'язковий!' }]}
                       >
-                        <Input placeholder="1kg" />
+                        <Input placeholder="1kg" style={{ width: 100 }} />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'type']}
+                        label="Тип"
+                        rules={[{ required: true, message: 'Тип обов\'язковий!' }]}
+                      >
+                        <Input placeholder="1кг" style={{ width: 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -435,7 +449,7 @@ const Products: React.FC = () => {
                         label="Вага"
                         rules={[{ required: true, message: 'Вага обов\'язкова!' }]}
                       >
-                        <InputNumber min={0} placeholder="1" />
+                        <InputNumber min={0} placeholder="1" style={{ width: 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -449,6 +463,14 @@ const Products: React.FC = () => {
                           <Option value="шт">шт</Option>
                           <Option value="набір">набір</Option>
                         </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'price']}
+                        label="Ціна"
+                        rules={[{ required: true, message: 'Ціна обов\'язкова!' }]}
+                      >
+                        <InputNumber min={0} placeholder="0" style={{ width: 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}

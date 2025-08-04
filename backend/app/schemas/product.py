@@ -3,11 +3,13 @@ from pydantic import BaseModel
 
 
 class PackageInfo(BaseModel):
-    type: str  # Package type like "300g", "1kg", etc.
+    id: str  # Package ID
+    type: Optional[str] = None  # Package type like "300g", "1kg", etc.
     weight: float
     unit: str
-    price: float
+    price: Optional[float] = None
     available: bool
+    note: Optional[str] = None
 
 
 class CategoryBase(BaseModel):
