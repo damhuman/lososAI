@@ -247,6 +247,9 @@ class Router {
                 return;
             }
             
+            // Check for order confirmation and show info box
+            this.showOrderConfirmationIfNeeded();
+            
             // Clear existing static categories
             categoriesGrid.innerHTML = '';
             
@@ -274,6 +277,61 @@ class Router {
             console.error('Error loading categories:', error);
             this.showApiErrorMessage();
         }
+    }
+    
+    showOrderConfirmationIfNeeded() {
+        // Check if order was just confirmed
+        const orderConfirmed = sessionStorage.getItem('orderConfirmed');
+        if (orderConfirmed === 'true') {
+            // Clear the flag
+            sessionStorage.removeItem('orderConfirmed');
+            
+            // Show confirmation info box
+            this.showOrderConfirmationBox();
+        }
+    }
+    
+    showOrderConfirmationBox() {
+        // Find the container after the header
+        const categoriesScreen = document.getElementById('categories');
+        const header = categoriesScreen.querySelector('.header, .screen-header');
+        
+        // Remove any existing confirmation box
+        const existingBox = categoriesScreen.querySelector('.order-confirmation-box');
+        if (existingBox) {
+            existingBox.remove();
+        }
+        
+        // Create confirmation box
+        const confirmationBox = document.createElement('div');
+        confirmationBox.className = 'order-confirmation-box';
+        confirmationBox.innerHTML = `
+            <div class="confirmation-content">
+                <div class="confirmation-icon">✅</div>
+                <div class="confirmation-text">
+                    <h3>Замовлення прийнято!</h3>
+                    <p>Ваше замовлення успішно оформлено. Менеджер зв'яжеться з вами найближчим часом для уточнення часу доставки.</p>
+                </div>
+                <button class="confirmation-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+        
+        // Insert after header or at the beginning
+        if (header) {
+            header.insertAdjacentElement('afterend', confirmationBox);
+        } else {
+            categoriesScreen.insertBefore(confirmationBox, categoriesScreen.firstChild);
+        }
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            if (confirmationBox.parentElement) {
+                confirmationBox.remove();
+            }
+        }, 10000);
+        
+        // Haptic feedback
+        window.telegramWebApp?.hapticFeedback('success');
     }
     
     showApiErrorMessage() {

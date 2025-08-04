@@ -25,6 +25,7 @@ class Order(Base):
     __tablename__ = "orders"
     
     id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, unique=True, nullable=False)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     
     # Order details
@@ -54,7 +55,7 @@ class Order(Base):
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Order {self.id}: User {self.user_id}, Status {self.status.value}>"
+        return f"<Order #{self.order_id}: User {self.user_id}, Status {self.status.value}>"
 
 
 class OrderItem(Base):

@@ -343,6 +343,7 @@ async def get_admin_orders(
     status: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    order_id: Optional[int] = Query(None),
     session: AsyncSession = Depends(get_async_session),
     username: str = Depends(verify_basic_auth)
 ):
@@ -353,6 +354,8 @@ async def get_admin_orders(
     filters = []
     if status:
         filters.append(Order.status == status)
+    if order_id:
+        filters.append(Order.order_id == order_id)
     if start_date:
         try:
             start_dt = datetime.fromisoformat(start_date)

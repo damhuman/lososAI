@@ -279,6 +279,26 @@ class TelegramWebApp {
         
         // Send data to bot
         this.tg.sendData(JSON.stringify(orderData));
+        
+        // Handle successful order submission
+        this.handleOrderSuccess();
+    }
+    
+    handleOrderSuccess() {
+        // Clear cart
+        if (window.cart) {
+            window.cart.clear();
+        }
+        
+        // Set order confirmation flag
+        sessionStorage.setItem('orderConfirmed', 'true');
+        
+        // Navigate to main page (categories)
+        setTimeout(() => {
+            if (window.router) {
+                window.router.navigateTo('categories');
+            }
+        }, 500);
     }
     
     hapticFeedback(type = 'light') {

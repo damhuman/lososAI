@@ -47,6 +47,7 @@ class OrderUpdate(BaseModel):
 
 class Order(BaseModel):
     id: int
+    order_id: int
     user_id: int
     status: OrderStatus
     total_amount: float
@@ -85,6 +86,7 @@ class OrderList(BaseModel):
 class OrderSummary(BaseModel):
     """Simplified order for list views"""
     id: int
+    order_id: int
     user_id: int
     status: OrderStatus
     total_amount: float
