@@ -1,9 +1,12 @@
-# Environment variables
+# Environment variables (NEVER COMMIT THESE!)
 .env
+.env.*
+!.env.template
 .env.local
 .env.production
 .env.staging
 .env.prod
+.env.test
 
 # Project-specific files
 CLAUDE.local.md
@@ -78,6 +81,13 @@ alembic/versions/*.pyc
 # Temporary files
 *.tmp
 *.temp
+
+# Session files and cookies (SECURITY RISK!)
+cookies*.txt
+admin_cookies.txt
+*.cookies
+session_*
+*_session*
 
 # Test coverage
 .coverage
