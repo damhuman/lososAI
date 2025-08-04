@@ -134,6 +134,11 @@ admin.add_view(SecureModelView(District, db_session, name='Districts', category=
 admin.add_view(SecureModelView(PromoCode, db_session, name='Promo Codes', category='Settings'))
 admin.add_view(UserView(UserModel, db_session, name='Users', category='Users'))
 
+# Root route - redirect to admin
+@app.route('/')
+def index():
+    return redirect(url_for('admin.index'))
+
 # Login routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
