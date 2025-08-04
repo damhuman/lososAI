@@ -3,6 +3,11 @@
 .env.local
 .env.production
 .env.staging
+.env.prod
+
+# Project-specific files
+CLAUDE.local.md
+docker-compose.prod.yml
 
 # Python
 __pycache__/

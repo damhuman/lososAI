@@ -111,25 +111,16 @@ admin = Admin(app, name='Seafood Store Admin',
               template_mode='bootstrap4',
               index_view=SecureAdminIndexView())
 
-# Add model views (we'll import the models here)
-try:
-    # Import models from backend
-    import sys
-    sys.path.append('../backend')
-    from app.db.models.order import Order, OrderItem
-    from app.db.models.product import Category, Product, District, PromoCode
-    from app.db.models.user import User as UserModel
-    
-    admin.add_view(OrderView(Order, Session(), name='Orders', category='Store'))
-    admin.add_view(SecureModelView(OrderItem, Session(), name='Order Items', category='Store'))
-    admin.add_view(ProductView(Product, Session(), name='Products', category='Catalog'))
-    admin.add_view(SecureModelView(Category, Session(), name='Categories', category='Catalog'))
-    admin.add_view(SecureModelView(District, Session(), name='Districts', category='Settings'))
-    admin.add_view(SecureModelView(PromoCode, Session(), name='Promo Codes', category='Settings'))
-    admin.add_view(UserView(UserModel, Session(), name='Users', category='Users'))
-    
-except ImportError as e:
-    print(f"Warning: Could not import models: {e}")
+# Add model views (import local models)
+from models import Order, OrderItem, Category, Product, District, PromoCode, User as UserModel
+
+admin.add_view(OrderView(Order, Session(), name='Orders', category='Store'))
+admin.add_view(SecureModelView(OrderItem, Session(), name='Order Items', category='Store'))
+admin.add_view(ProductView(Product, Session(), name='Products', category='Catalog'))
+admin.add_view(SecureModelView(Category, Session(), name='Categories', category='Catalog'))
+admin.add_view(SecureModelView(District, Session(), name='Districts', category='Settings'))
+admin.add_view(SecureModelView(PromoCode, Session(), name='Promo Codes', category='Settings'))
+admin.add_view(UserView(UserModel, Session(), name='Users', category='Users'))
 
 # Login routes
 @app.route('/login', methods=['GET', 'POST'])

@@ -43,7 +43,7 @@ class Product(Base):
     
     # Relationships
     category = relationship("Category", back_populates="products")
-    order_items = relationship("OrderItem", back_populates="product")
+    # order_items = relationship("OrderItem", back_populates="product")  # Disabled to avoid circular import
     
     def __repr__(self):
         return f"<Product {self.id}: {self.name}>"
@@ -58,7 +58,7 @@ class District(Base):
     delivery_cost = Column(Float, default=0)  # Additional delivery cost if any
     
     # Relationships
-    orders = relationship("Order", back_populates="district")
+    # orders = relationship("Order", back_populates="district")  # Disabled to avoid circular import
     
     def __repr__(self):
         return f"<District {self.id}: {self.name}>"
