@@ -23,7 +23,7 @@ class TestAdminAuth:
         """Test admin verify endpoint with authentication."""
         response = await client.get("/api/v1/admin/verify", headers=admin_headers)
         assert response.status_code == 200
-        assert response.json() == {"message": "Admin authenticated"}
+        assert response.json() == {"username": "admin", "valid": True}
     
     async def test_verify_endpoint_invalid_auth(self, client: AsyncClient):
         """Test admin verify endpoint with invalid authentication."""
@@ -210,7 +210,7 @@ class TestAdminUsers:
         data = response.json()
         assert data["total"] == 1
         assert len(data["items"]) == 1
-        assert data["items"][0]["telegram_id"] == sample_user.telegram_id
+        assert data["items"][0]["id"] == sample_user.id
     
     async def test_get_user_stats(self, client: AsyncClient, admin_headers, sample_user):
         """Test getting user statistics."""
@@ -259,7 +259,7 @@ class TestAdminOrders:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == sample_order.id
-        assert data["status"] == sample_order.status
+        assert data["status"] == sample_order.status.value
     
     async def test_update_order_status(self, client: AsyncClient, admin_headers, sample_order):
         """Test updating order status."""
