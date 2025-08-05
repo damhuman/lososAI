@@ -406,7 +406,7 @@ class Router {
         div.innerHTML = `
             <div class="product-info">
                 <div class="product-image">
-                    <img src="${product.image_url || '/images/placeholder.jpg'}" alt="${product.name}">
+                    <img src="${product.image_url || '/images/placeholder.svg'}" alt="${product.name}" onerror="this.src='/images/placeholder.svg'">
                 </div>
                 <div class="product-details">
                     <h3>${product.name}</h3>

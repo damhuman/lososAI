@@ -116,12 +116,13 @@ class ShoppingCart {
                 product_id: product.id,
                 product_name: product.name,
                 package_id: packageInfo.id,
+                package_name: packageInfo.name, // Use the formatted name from the package
                 weight: packageInfo.weight,
                 unit: packageInfo.unit,
                 quantity: quantity,
-                price_per_unit: product.price_per_kg * packageInfo.weight,
-                total_price: quantity * (product.price_per_kg * packageInfo.weight),
-                image_url: product.image_url
+                price_per_unit: packageInfo.price, // Use package price directly
+                total_price: quantity * packageInfo.price,
+                image_url: packageInfo.image_url || product.image_url // Prefer package image, fallback to product image
             };
             
             this.items.push(cartItem);
@@ -377,11 +378,15 @@ class CartUIManager {
         this.cartSummaryElement.style.display = 'block';
         this.cartEmptyElement.style.display = 'none';
         
+        // Clear existing items
         this.cartItemsContainer.innerHTML = '';
         
+        // Create and append new items with event listeners
         items.forEach(item => {
             const cartItemElement = this.createCartItemElement(item);
             this.cartItemsContainer.appendChild(cartItemElement);
+            // Attach event listeners to this specific item
+            this.attachEventListeners(cartItemElement, item);
         });
     }
     
@@ -389,71 +394,101 @@ class CartUIManager {
         const div = document.createElement('div');
         div.className = 'cart-item';
         
+        // Create product image with fallback logic
+        const getCartItemFallback = (packageName, weight, unit) => {
+            if (packageName && packageName.toLowerCase().includes('0.5') || packageName.includes('500')) return '/images/package-500g.svg';
+            if (packageName && packageName.toLowerCase().includes('1.0') || packageName.includes('1kg')) return '/images/package-1kg.svg';
+            if (weight && unit) {
+                const weightStr = `${weight}${unit}`;
+                if (weightStr.includes('0.5') || weightStr.includes('500')) return '/images/package-500g.svg';
+                if (weightStr.includes('1') && unit === 'kg') return '/images/package-1kg.svg';
+            }
+            return '/images/placeholder.svg';
+        };
+        
+        const productImage = item.image_url ? 
+            `<img src="${item.image_url}" alt="${item.product_name}" class="cart-item-image loading" onload="this.classList.remove('loading')" onerror="this.onerror=null; this.src='${getCartItemFallback(item.package_name, item.weight, item.unit)}'; this.classList.remove('loading'); this.classList.add('fallback-image');">` : 
+            `<img src="${getCartItemFallback(item.package_name, item.weight, item.unit)}" alt="${item.product_name}" class="cart-item-image fallback-image">`;
+        
         div.innerHTML = `
-            <div class="cart-item-header">
-                <h4>${item.product_name}</h4>
-                <button class="cart-item-remove" data-product-id="${item.product_id}" data-package-id="${item.package_id}">
-                    ×
-                </button>
-            </div>
-            <div class="cart-item-details">
-                ${item.weight} ${item.unit} • ${item.price_per_unit} грн за одиницю
-            </div>
-            <div class="cart-item-controls">
-                <div class="cart-quantity-controls">
-                    <button class="cart-quantity-btn" data-action="decrease" data-product-id="${item.product_id}" data-package-id="${item.package_id}">-</button>
-                    <input type="number" class="cart-quantity-input" value="${item.quantity}" min="1" max="10" 
-                           data-product-id="${item.product_id}" data-package-id="${item.package_id}">
-                    <button class="cart-quantity-btn" data-action="increase" data-product-id="${item.product_id}" data-package-id="${item.package_id}">+</button>
+            <div class="cart-item-content">
+                <div class="cart-item-image-container">
+                    ${productImage}
                 </div>
-                <div class="cart-item-price">
-                    ${item.total_price} грн
+                <div class="cart-item-info">
+                    <div class="cart-item-header">
+                        <h4>${item.product_name}</h4>
+                        <button class="cart-item-remove" data-product-id="${item.product_id}" data-package-id="${item.package_id}">
+                            ×
+                        </button>
+                    </div>
+                    <div class="cart-item-details">
+                        ${item.package_name || `${item.weight} ${item.unit}`} • ${item.price_per_unit} грн за одиницю
+                    </div>
+                    <div class="cart-item-controls">
+                        <div class="cart-quantity-controls">
+                            <button class="cart-quantity-btn" data-action="decrease" data-product-id="${item.product_id}" data-package-id="${item.package_id}">-</button>
+                            <input type="number" class="cart-quantity-input" value="${item.quantity}" min="1" max="10" 
+                                   data-product-id="${item.product_id}" data-package-id="${item.package_id}">
+                            <button class="cart-quantity-btn" data-action="increase" data-product-id="${item.product_id}" data-package-id="${item.package_id}">+</button>
+                        </div>
+                        <div class="cart-item-price">
+                            ${item.total_price} грн
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         
-        this.attachCartItemListeners(div);
-        
         return div;
     }
     
-    attachCartItemListeners(element) {
-        // Remove item
+    attachEventListeners(element, item) {
+        // Get all interactive elements
         const removeBtn = element.querySelector('.cart-item-remove');
-        removeBtn.addEventListener('click', (e) => {
-            const productId = e.target.dataset.productId;
-            const packageId = e.target.dataset.packageId;
-            this.cart.removeItem(productId, packageId);
-        });
+        const increaseBtn = element.querySelector('[data-action="increase"]');
+        const decreaseBtn = element.querySelector('[data-action="decrease"]');
+        const quantityInput = element.querySelector('.cart-quantity-input');
         
-        // Quantity controls
-        const quantityBtns = element.querySelectorAll('.cart-quantity-btn');
-        quantityBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = e.target.dataset.action;
-                const productId = e.target.dataset.productId;
-                const packageId = e.target.dataset.packageId;
-                const currentItem = this.cart.findItem(productId, packageId);
-                
-                if (currentItem) {
-                    const newQuantity = action === 'increase' 
-                        ? currentItem.quantity + 1 
-                        : currentItem.quantity - 1;
-                    
-                    this.cart.updateQuantity(productId, packageId, newQuantity);
-                }
+        // Remove button
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Remove clicked for:', item.product_id, item.package_id);
+                this.cart.removeItem(item.product_id, item.package_id);
             });
-        });
+        }
+        
+        // Increase button
+        if (increaseBtn) {
+            increaseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Increase clicked for:', item.product_id, item.package_id);
+                this.cart.updateQuantity(item.product_id, item.package_id, item.quantity + 1);
+            });
+        }
+        
+        // Decrease button
+        if (decreaseBtn) {
+            decreaseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Decrease clicked for:', item.product_id, item.package_id);
+                const newQuantity = Math.max(1, item.quantity - 1);
+                this.cart.updateQuantity(item.product_id, item.package_id, newQuantity);
+            });
+        }
         
         // Quantity input
-        const quantityInput = element.querySelector('.cart-quantity-input');
-        quantityInput.addEventListener('change', (e) => {
-            const productId = e.target.dataset.productId;
-            const packageId = e.target.dataset.packageId;
-            const newQuantity = parseInt(e.target.value) || 1;
-            
-            this.cart.updateQuantity(productId, packageId, newQuantity);
-        });
+        if (quantityInput) {
+            quantityInput.addEventListener('change', (e) => {
+                const newQuantity = Math.max(1, parseInt(e.target.value) || 1);
+                console.log('Quantity input changed for:', item.product_id, item.package_id, 'to:', newQuantity);
+                this.cart.updateQuantity(item.product_id, item.package_id, newQuantity);
+            });
+        }
     }
     
     updateTotal() {

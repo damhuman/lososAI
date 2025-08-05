@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 import os
 
 from app.core.config import settings
-from app.api.endpoints import categories, products, orders, districts, promo, admin, errors, bot, auth
+from app.api.endpoints import categories, products, packages, orders, districts, promo, admin, errors, bot, auth
 
 # Create FastAPI app
 app = FastAPI(
@@ -26,6 +26,7 @@ app.add_middleware(
 # Include API routers
 app.include_router(categories.router, prefix=f"{settings.API_V1_STR}/categories", tags=["categories"])
 app.include_router(products.router, prefix=f"{settings.API_V1_STR}/products", tags=["products"])
+app.include_router(packages.router, prefix=f"{settings.API_V1_STR}/packages", tags=["packages"])
 app.include_router(orders.router, prefix=f"{settings.API_V1_STR}/orders", tags=["orders"])
 app.include_router(districts.router, prefix=f"{settings.API_V1_STR}/districts", tags=["districts"])
 app.include_router(promo.router, prefix=f"{settings.API_V1_STR}/promo", tags=["promo"])

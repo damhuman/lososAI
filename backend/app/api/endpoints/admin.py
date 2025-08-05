@@ -7,11 +7,17 @@ from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_async_session, get_current_admin
-from app.db.models.product import Category, Product, District, PromoCode
+from app.db.models.product import Category, Product, ProductPackage, District, PromoCode
 from app.db.models.user import User
 from app.db.models.order import Order, OrderItem
 from app.db.models.admin import AdminUser
-from app.schemas.product import Category as CategorySchema, Product as ProductSchema
+from app.schemas.product import (
+    Category as CategorySchema, 
+    Product as ProductSchema,
+    ProductPackage as ProductPackageSchema,
+    ProductPackageCreate,
+    ProductPackageUpdate
+)
 from app.schemas.admin import *
 from app.services.s3 import s3_service
 
@@ -118,7 +124,10 @@ async def get_admin_products(
     # Get products
     query = (
         select(Product)
-        .options(selectinload(Product.category))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.product_packages)
+        )
         .order_by(desc(Product.is_featured), Product.name)
         .offset(offset)
         .limit(size)
@@ -163,7 +172,10 @@ async def get_admin_product(
     current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get product by ID"""
-    query = select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
+    query = select(Product).options(
+        selectinload(Product.category),
+        selectinload(Product.product_packages)
+    ).where(Product.id == product_id)
     result = await session.execute(query)
     product = result.scalar_one_or_none()
     
@@ -775,3 +787,175 @@ async def delete_promo_code(
     await session.delete(db_promo_code)
     await session.commit()
     return {"message": "Promo code deleted successfully"}
+
+
+# Product Packages CRUD
+@router.get("/products/{product_id}/packages", response_model=List[ProductPackageResponse])
+async def get_product_packages(
+    product_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get all packages for a specific product"""
+    query = (
+        select(ProductPackage)
+        .where(ProductPackage.product_id == product_id)
+        .order_by(ProductPackage.sort_order, ProductPackage.id)
+    )
+    result = await session.execute(query)
+    packages = result.scalars().all()
+    return packages
+
+
+@router.post("/products/{product_id}/packages", response_model=ProductPackageResponse, status_code=201)
+async def create_product_package(
+    product_id: str,
+    package: ProductPackageCreate,
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Create a new package for a product"""
+    # Check if product exists
+    product_query = select(Product).where(Product.id == product_id)
+    product_result = await session.execute(product_query)
+    if not product_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Check if package_id already exists for this product
+    existing_query = select(ProductPackage).where(
+        ProductPackage.product_id == product_id,
+        ProductPackage.package_id == package.package_id
+    )
+    existing_result = await session.execute(existing_query)
+    if existing_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Package with ID '{package.package_id}' already exists for this product"
+        )
+    
+    try:
+        db_package = ProductPackage(
+            product_id=product_id,
+            **package.dict()
+        )
+        session.add(db_package)
+        await session.commit()
+        await session.refresh(db_package)
+        return db_package
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create package")
+
+
+@router.get("/products/{product_id}/packages/{package_id}", response_model=ProductPackageResponse)
+async def get_product_package(
+    product_id: str,
+    package_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Get a specific package by ID"""
+    query = select(ProductPackage).where(
+        ProductPackage.product_id == product_id,
+        ProductPackage.id == package_id
+    )
+    result = await session.execute(query)
+    package = result.scalar_one_or_none()
+    
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    return package
+
+
+@router.put("/products/{product_id}/packages/{package_id}", response_model=ProductPackageResponse)
+async def update_product_package(
+    product_id: str,
+    package_id: int,
+    package: ProductPackageUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Update a product package"""
+    query = select(ProductPackage).where(
+        ProductPackage.product_id == product_id,
+        ProductPackage.id == package_id
+    )
+    result = await session.execute(query)
+    db_package = result.scalar_one_or_none()
+    
+    if not db_package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    for field, value in package.dict(exclude_unset=True).items():
+        setattr(db_package, field, value)
+    
+    await session.commit()
+    await session.refresh(db_package)
+    return db_package
+
+
+@router.delete("/products/{product_id}/packages/{package_id}", status_code=204)
+async def delete_product_package(
+    product_id: str,
+    package_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Delete a product package"""
+    query = select(ProductPackage).where(
+        ProductPackage.product_id == product_id,
+        ProductPackage.id == package_id
+    )
+    result = await session.execute(query)
+    db_package = result.scalar_one_or_none()
+    
+    if not db_package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    # Delete image from S3 if exists
+    if db_package.image_url:
+        try:
+            await s3_service.delete_image(db_package.image_url)
+        except Exception as e:
+            print(f"Warning: Failed to delete package image: {e}")
+    
+    await session.delete(db_package)
+    await session.commit()
+
+
+@router.post("/products/{product_id}/packages/{package_id}/image", response_model=ImageUploadResponse)
+async def upload_package_image(
+    product_id: str,
+    package_id: int,
+    image: UploadFile = File(...),
+    session: AsyncSession = Depends(get_async_session),
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    """Upload image for a product package"""
+    # Check if package exists
+    query = select(ProductPackage).where(
+        ProductPackage.product_id == product_id,
+        ProductPackage.id == package_id
+    )
+    result = await session.execute(query)
+    db_package = result.scalar_one_or_none()
+    
+    if not db_package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    try:
+        # Delete old image if exists
+        if db_package.image_url:
+            await s3_service.delete_image(db_package.image_url)
+        
+        # Upload new image
+        image_url = await s3_service.upload_image(image, folder="packages")
+        
+        # Update package with new image URL
+        db_package.image_url = image_url
+        await session.commit()
+        
+        return ImageUploadResponse(url=image_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

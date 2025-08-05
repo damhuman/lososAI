@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useResponsive } from '../hooks/useResponsive';
 
 const { Header, Sider, Content } = Layout;
 
@@ -23,27 +24,20 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isMobile } = useResponsive();
   const {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  // Check if device is mobile
+  // Auto-collapse sidebar on mobile
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setCollapsed(true);
-      }
-    };
-    
-    checkIsMobile();
-    window.addEventListener('resize', checkIsMobile);
-    return () => window.removeEventListener('resize', checkIsMobile);
-  }, []);
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile]);
 
   const menuItems = [
     {
@@ -110,18 +104,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const SideMenu = () => (
     <>
       <div className="demo-logo-vertical" style={{ 
-        height: 32, 
-        margin: 16, 
-        background: 'rgba(255, 255, 255, 0.3)',
-        borderRadius: 6,
+        height: 64, 
+        margin: 0,
+        background: '#002140',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: 'white',
         fontWeight: 'bold',
-        fontSize: isMobile ? '12px' : '14px'
+        fontSize: collapsed && !isMobile ? '16px' : '18px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
-        {collapsed && !isMobile ? 'SF' : 'Seafood Admin'}
+        {collapsed && !isMobile ? '🐟' : '🐟 Seafood Admin'}
       </div>
       <Menu
         theme="dark"
@@ -140,7 +134,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <Layout style={{ minHeight: '100vh' }}>
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sider trigger={null} collapsible collapsed={collapsed}>
+        <Sider 
+          trigger={null} 
+          collapsible 
+          collapsed={collapsed}
+          style={{
+            background: '#001529',
+            borderRight: '1px solid rgba(0, 0, 0, 0.1)'
+          }}
+        >
           <SideMenu />
         </Sider>
       )}
@@ -176,7 +178,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           position: 'sticky',
           top: 0,
           zIndex: 1000,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          borderBottom: '1px solid #f0f0f0'
         }}>
           <Button
             type="text"
@@ -212,11 +215,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </Header>
         <Content
           style={{
-            margin: isMobile ? '8px' : '24px 16px',
+            margin: 0,
             padding: isMobile ? 16 : 24,
-            minHeight: 280,
+            minHeight: 'calc(100vh - 64px)',
             background: colorBgContainer,
-            borderRadius: 8,
             overflow: 'auto'
           }}
         >

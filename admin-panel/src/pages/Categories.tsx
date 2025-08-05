@@ -10,18 +10,26 @@ import {
   Popconfirm,
   Space,
   Tag,
-  InputNumber
+  InputNumber,
+  Card,
+  Row,
+  Col,
+  Typography
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { categoriesAPI } from '../services/api';
 import { Category } from '../types';
+import { useResponsive } from '../hooks/useResponsive';
+
+const { Text } = Typography;
 
 const Categories: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const { isMobile } = useResponsive();
 
   const { data: categories, isLoading } = useQuery('categories', categoriesAPI.getAll);
 
@@ -100,13 +108,14 @@ const Categories: React.FC = () => {
       dataIndex: 'id',
       key: 'id',
       width: 120,
+      responsive: ['lg'] as any,
     },
     {
       title: 'Іконка',
       dataIndex: 'icon',
       key: 'icon',
-      width: 80,
-      render: (icon: string) => <span style={{ fontSize: '24px' }}>{icon}</span>,
+      width: 60,
+      render: (icon: string) => <span style={{ fontSize: isMobile ? '20px' : '24px' }}>{icon}</span>,
     },
     {
       title: 'Назва',
@@ -118,21 +127,23 @@ const Categories: React.FC = () => {
       dataIndex: 'description',
       key: 'description',
       render: (description: string) => description || '—',
+      responsive: ['md'] as any,
     },
     {
       title: 'Порядок',
       dataIndex: 'order',
       key: 'order',
-      width: 100,
+      width: 80,
       sorter: (a: Category, b: Category) => a.order - b.order,
+      responsive: ['sm'] as any,
     },
     {
       title: 'Статус',
       dataIndex: 'is_active',
       key: 'is_active',
-      width: 100,
+      width: 90,
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'green' : 'red'}>
+        <Tag color={isActive ? 'green' : 'red'} style={{ fontSize: isMobile ? '10px' : '12px' }}>
           {isActive ? 'Активна' : 'Неактивна'}
         </Tag>
       ),
@@ -140,31 +151,34 @@ const Categories: React.FC = () => {
     {
       title: 'Дії',
       key: 'actions',
-      width: 150,
+      width: isMobile ? 80 : 150,
       render: (_: any, record: Category) => (
-        <Space>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} size="small">
           <Button
             type="primary"
             ghost
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ fontSize: isMobile ? '10px' : '12px' }}
           >
-            Редагувати
+            {isMobile ? 'Ред.' : 'Редагувати'}
           </Button>
           <Popconfirm
             title="Ви впевнені, що хочете видалити цю категорію?"
             onConfirm={() => handleDelete(record.id)}
             okText="Так"
             cancelText="Ні"
+            placement={isMobile ? 'top' : 'topRight'}
           >
             <Button
               type="primary"
               danger
               size="small"
               icon={<DeleteOutlined />}
+              style={{ fontSize: isMobile ? '10px' : '12px' }}
             >
-              Видалити
+              {isMobile ? 'Вид.' : 'Видалити'}
             </Button>
           </Popconfirm>
         </Space>
@@ -172,35 +186,123 @@ const Categories: React.FC = () => {
     },
   ];
 
+  const renderMobileCard = (category: Category) => (
+    <Card
+      key={category.id}
+      size="small"
+      style={{ marginBottom: 8 }}
+      bodyStyle={{ padding: 12 }}
+    >
+      <Row gutter={[8, 8]} align="middle">
+        <Col span={4}>
+          <div style={{ fontSize: '20px', textAlign: 'center' }}>{category.icon}</div>
+        </Col>
+        <Col span={12}>
+          <div>
+            <Text strong>{category.name}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: '12px' }}>#{category.order}</Text>
+          </div>
+        </Col>
+        <Col span={4}>
+          <Tag 
+            color={category.is_active ? 'green' : 'red'} 
+            style={{ fontSize: '10px', margin: 0 }}
+          >
+            {category.is_active ? 'Активна' : 'Неактивна'}
+          </Tag>
+        </Col>
+        <Col span={4}>
+          <Space direction="vertical" size={4}>
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(category)}
+              style={{ fontSize: '10px', padding: '0 4px', height: '24px' }}
+            />
+            <Popconfirm
+              title="Видалити категорію?"
+              onConfirm={() => handleDelete(category.id)}
+              okText="Так"
+              cancelText="Ні"
+              placement="topRight"
+            >
+              <Button
+                type="primary"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                style={{ fontSize: '10px', padding: '0 4px', height: '24px' }}
+              />
+            </Popconfirm>
+          </Space>
+        </Col>
+      </Row>
+      {category.description && (
+        <Row style={{ marginTop: 8 }}>
+          <Col span={24}>
+            <Text type="secondary" style={{ fontSize: '11px' }}>
+              {category.description}
+            </Text>
+          </Col>
+        </Row>
+      )}
+    </Card>
+  );
+
   return (
-    <div>
+    <div style={{ padding: isMobile ? '8px' : '0' }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: 24 
+        marginBottom: isMobile ? 16 : 24,
+        flexWrap: isMobile ? 'wrap' : 'nowrap',
+        gap: isMobile ? '8px' : '0'
       }}>
-        <h1>Категорії</h1>
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: isMobile ? '18px' : '24px',
+          flex: isMobile ? '1 1 100%' : 'initial'
+        }}>Категорії</h1>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
+          size={isMobile ? 'small' : 'middle'}
+          style={isMobile ? { width: '100%' } : {}}
         >
-          Додати категорію
+          {isMobile ? 'Додати' : 'Додати категорію'}
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={categories}
-        rowKey="id"
-        loading={isLoading}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-        }}
-      />
+      {isMobile ? (
+        <div>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <Text>Завантаження...</Text>
+            </div>
+          ) : (
+            categories?.map(renderMobileCard)
+          )}
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={categories}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: !isMobile,
+            showQuickJumper: !isMobile,
+            simple: isMobile,
+          }}
+          scroll={{ x: 800 }}
+        />
+      )}
 
       <Modal
         title={editingCategory ? 'Редагувати категорію' : 'Додати категорію'}
@@ -223,7 +325,7 @@ const Categories: React.FC = () => {
             label="ID категорії"
             rules={[
               { required: true, message: 'Будь ласка, введіть ID категорії!' },
-              { pattern: /^[a-z_]+$/, message: 'ID повинен містити лише малі літери та підкреслення!' }
+              { pattern: /^[a-z_0-9-]+$/, message: 'ID повинен містити лише малі літери, цифри, підкреслення та дефіси!' }
             ]}
           >
             <Input disabled={!!editingCategory} placeholder="salmon, shellfish, caviar..." />

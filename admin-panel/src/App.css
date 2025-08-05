@@ -2,6 +2,15 @@
   text-align: left;
 }
 
+/* Fix layout to use full width */
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-content {
+  flex: 1;
+}
+
 .ant-layout-sider-collapsed .demo-logo-vertical {
   font-size: 12px;
 }
@@ -88,4 +97,25 @@
 .ant-tag {
   border-radius: 4px;
   font-size: 12px;
+}
+
+/* Table improvements for full width */
+.ant-table-wrapper {
+  width: 100%;
+}
+
+.ant-table {
+  width: 100%;
+}
+
+/* Fix sidebar logo */
+.demo-logo-vertical {
+  transition: all 0.2s;
+}
+
+/* Better spacing for page titles */
+h1 {
+  margin: 0;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
 }

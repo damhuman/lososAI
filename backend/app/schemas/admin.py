@@ -1,5 +1,5 @@
 from typing import List, Optional, Generic, TypeVar, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from datetime import datetime
 
 T = TypeVar('T')
@@ -102,7 +102,8 @@ class ProductResponse(BaseModel):
     description: Optional[str] = None
     price_per_kg: float
     image_url: Optional[str] = None
-    packages: List[PackageInfo]
+    packages: List[PackageInfo]  # Keep for backward compatibility
+    # product_packages: List['ProductPackageResponse'] = []  # New relational packages - temporarily disabled
     is_active: bool
     is_featured: bool
     stock_quantity: Optional[float] = None
@@ -123,7 +124,7 @@ class CategoryResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Update the ProductResponse to properly reference CategoryResponse
+# Update the ProductResponse to properly reference CategoryResponse and ProductPackageResponse
 ProductResponse.model_rebuild()
 
 # User schemas
@@ -250,6 +251,90 @@ class PromoCodeResponse(BaseModel):
     usage_limit: Optional[int] = None
     usage_count: int
     is_gold_code: bool
+    
+    class Config:
+        from_attributes = True
+
+
+# Product Package schemas
+class ProductPackageCreate(BaseModel):
+    package_id: str
+    name: str
+    weight: float
+    unit: str
+    price: float
+    available: bool = True
+    sort_order: int = 0
+    note: Optional[str] = None
+    
+    @validator('weight')
+    def weight_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError('Weight must be positive')
+        return v
+    
+    @validator('price')
+    def price_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError('Price must be positive')
+        return v
+    
+    @validator('package_id')
+    def package_id_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Package ID cannot be empty')
+        return v.strip()
+    
+    @validator('name')
+    def name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Name cannot be empty')
+        return v.strip()
+
+
+class ProductPackageUpdate(BaseModel):
+    name: Optional[str] = None
+    weight: Optional[float] = None
+    unit: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
+    available: Optional[bool] = None
+    sort_order: Optional[int] = None
+    note: Optional[str] = None
+    
+    @validator('weight')
+    def weight_must_be_positive(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError('Weight must be positive')
+        return v
+    
+    @validator('price')
+    def price_must_be_positive(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError('Price must be positive')
+        return v
+    
+    @validator('name')
+    def name_must_not_be_empty(cls, v):
+        if v is not None and (not v or not v.strip()):
+            raise ValueError('Name cannot be empty')
+        return v.strip() if v else None
+
+
+class ProductPackageResponse(BaseModel):
+    id: int
+    product_id: str
+    package_id: str
+    name: str
+    weight: float
+    unit: str
+    price: float
+    image_url: Optional[str] = None
+    available: bool
+    sort_order: int
+    note: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True

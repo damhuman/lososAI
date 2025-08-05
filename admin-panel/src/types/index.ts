@@ -15,6 +15,22 @@ export interface PackageInfo {
   note?: string;
 }
 
+export interface ProductPackage {
+  id: number;
+  product_id: string;
+  package_id: string;
+  name: string;
+  weight: number;
+  unit: string;
+  price: number;
+  image_url?: string;
+  available: boolean;
+  sort_order: number;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product {
   id: string;
   category_id: string;
@@ -22,7 +38,8 @@ export interface Product {
   description?: string;
   price_per_kg: number;
   image_url?: string;
-  packages: PackageInfo[];
+  packages: PackageInfo[]; // Legacy field
+  product_packages?: ProductPackage[]; // New relational packages
   is_active: boolean;
   is_featured: boolean;
   stock_quantity?: number;

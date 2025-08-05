@@ -51,7 +51,7 @@ class Order(Base):
     
     # Relationships
     user = relationship("User", back_populates="orders")
-    district = relationship("District", back_populates="orders")
+    district = relationship("District")  # Temporarily removed back_populates
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     
     def __repr__(self):

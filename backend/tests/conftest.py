@@ -13,6 +13,8 @@ from app.db.session import Base, get_async_session
 from app.db.models.product import Category, Product, District, PromoCode
 from app.db.models.user import User
 from app.db.models.order import Order, OrderItem
+from app.db.models.admin import AdminUser
+from app.core.security import get_password_hash
 
 
 # Test database URL - using in-memory SQLite for faster tests
@@ -42,9 +44,19 @@ async def test_session() -> AsyncGenerator[AsyncSession, None]:
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Create session
+    # Create session and add test admin user
     async with TestSessionLocal() as session:
         try:
+            # Create admin user for JWT authentication
+            admin_user = AdminUser(
+                username="admin",
+                email="admin@test.com",
+                password_hash=get_password_hash("admin123"),
+                is_active=True
+            )
+            session.add(admin_user)
+            await session.commit()
+            
             yield session
         finally:
             await session.rollback()
@@ -75,11 +87,19 @@ async def client(test_session: AsyncSession, sample_user: User) -> AsyncGenerato
         app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def admin_headers():
-    """Create admin authentication headers."""
-    credentials = base64.b64encode(b"admin:admin123").decode("ascii")
-    return {"Authorization": f"Basic {credentials}"}
+@pytest_asyncio.fixture
+async def admin_headers(client: AsyncClient):
+    """Create JWT admin authentication headers."""
+    # Login to get JWT token
+    login_response = await client.post(
+        "/api/v1/admin/auth/login",
+        json={"username": "admin", "password": "admin123"}
+    )
+    assert login_response.status_code == 200
+    token_data = login_response.json()
+    access_token = token_data["access_token"]
+    
+    return {"Authorization": f"Bearer {access_token}"}
 
 
 @pytest_asyncio.fixture

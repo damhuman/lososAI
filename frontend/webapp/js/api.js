@@ -127,6 +127,11 @@ class ApiClient {
         return this.get(`/products/${productId}`);
     }
     
+    // Packages API
+    async getProductPackages(productId) {
+        return this.get(`/packages/product/${productId}`);
+    }
+    
     // Orders API
     async createOrder(orderData) {
         return this.post('/orders/', orderData);
@@ -228,6 +233,18 @@ class ApiService {
         }
         
         return product;
+    }
+    
+    async getProductPackages(productId) {
+        const cacheKey = `product_packages_${productId}`;
+        let packages = this.cache.get(cacheKey);
+        
+        if (!packages) {
+            packages = await this.client.getProductPackages(productId);
+            this.cache.set(cacheKey, packages);
+        }
+        
+        return packages;
     }
     
     async getDistricts() {

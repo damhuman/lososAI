@@ -2,6 +2,7 @@
 class SeafoodStoreApp {
     constructor() {
         this.currentProduct = null;
+        this.currentPackages = null;
         this.selectedPackage = null;
         this.promoCode = null;
         this.promoDiscount = 0;
@@ -227,13 +228,43 @@ class SeafoodStoreApp {
             this.selectedPackage = null;
             
             // Update UI
-            document.getElementById('product-img').src = product.image_url || '/images/placeholder.jpg';
+            const productImg = document.getElementById('product-img');
+            productImg.src = product.image_url || '/images/placeholder.svg';
+            productImg.onerror = function() { this.src = '/images/placeholder.svg'; };
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-description').textContent = product.description || '';
             document.getElementById('product-price').textContent = `${product.price_per_kg} грн/кг`;
             
-            // Load packages
-            this.loadPackageOptions(product.packages);
+            // Load packages from new API
+            try {
+                const packages = await window.apiService.getProductPackages(productId);
+                console.log('Loaded packages from API:', packages);
+                
+                if (packages && packages.length > 0) {
+                    this.currentPackages = packages;
+                    this.loadPackageOptions(packages);
+                } else {
+                    console.log('No packages found, falling back to legacy packages');
+                    // Fallback to legacy packages if no new packages exist
+                    if (product.packages && product.packages.length > 0) {
+                        this.currentPackages = product.packages;
+                        this.loadLegacyPackageOptions(product.packages);
+                    } else {
+                        console.log('No packages available at all');
+                        this.loadPackageOptions([]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading packages:', error);
+                // Fallback to legacy packages on error
+                if (product.packages && product.packages.length > 0) {
+                    console.log('Using legacy packages as fallback');
+                    this.currentPackages = product.packages;
+                    this.loadLegacyPackageOptions(product.packages);
+                } else {
+                    this.loadPackageOptions([]);
+                }
+            }
             
             // Reset quantity
             document.getElementById('quantity-input').value = 1;
@@ -272,7 +303,16 @@ class SeafoodStoreApp {
         const packageList = document.getElementById('package-list');
         packageList.innerHTML = '';
         
-        packages.forEach((pkg, index) => {
+        if (!packages || packages.length === 0) {
+            packageList.innerHTML = '<p>Упаковки недоступні</p>';
+            return;
+        }
+        
+        // Sort packages by sort_order
+        const sortedPackages = packages.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        
+        let firstAvailableIndex = -1;
+        sortedPackages.forEach((pkg, index) => {
             if (!pkg.available) return;
             
             const label = document.createElement('label');
@@ -280,15 +320,33 @@ class SeafoodStoreApp {
             
             const note = pkg.note ? ` (${pkg.note})` : '';
             
+            // Use package_id for the value (this is the unique identifier in the database)
+            const isFirst = firstAvailableIndex === -1;
+            if (isFirst) firstAvailableIndex = index;
+            
+            // Create package image element with better fallback
+            const getPackageFallback = (name) => {
+                if (name && name.toLowerCase().includes('0.5') || name.includes('500')) return '/images/package-500g.svg';
+                if (name && name.toLowerCase().includes('1.0') || name.includes('1kg')) return '/images/package-1kg.svg';
+                return '/images/placeholder.svg';
+            };
+            
+            const packageImage = pkg.image_url ? 
+                `<img src="${pkg.image_url}" alt="${pkg.name}" class="package-image loading" onload="this.classList.remove('loading')" onerror="this.onerror=null; this.src='${getPackageFallback(pkg.name)}'; this.classList.remove('loading'); this.classList.add('fallback-image');">` : 
+                `<img src="${getPackageFallback(pkg.name)}" alt="${pkg.name}" class="package-image fallback-image" title="Зображення упаковки">`;
+            
             label.innerHTML = `
-                <input type="radio" name="package" value="${pkg.id}" ${index === 0 ? 'checked' : ''}>
-                <span>${pkg.weight} ${pkg.unit}${note}</span>
+                <input type="radio" name="package" value="${pkg.id}" ${isFirst ? 'checked' : ''}>
+                <div class="package-content">
+                    ${packageImage}
+                    <span class="package-text">${pkg.name}${note} - ${pkg.price} грн</span>
+                </div>
             `;
             
             packageList.appendChild(label);
             
-            // Auto-select first package
-            if (index === 0) {
+            // Auto-select first available package
+            if (isFirst) {
                 this.selectedPackage = pkg;
                 label.classList.add('selected');
             }
@@ -297,10 +355,74 @@ class SeafoodStoreApp {
         this.updateTotalPrice();
     }
     
-    handlePackageSelection(packageId) {
-        if (!this.currentProduct) return;
+    loadLegacyPackageOptions(packages) {
+        const packageList = document.getElementById('package-list');
+        packageList.innerHTML = '';
         
-        this.selectedPackage = this.currentProduct.packages.find(pkg => pkg.id === packageId);
+        packages.forEach((pkg, index) => {
+            if (!pkg.available) return;
+            
+            const label = document.createElement('label');
+            label.className = 'radio-option';
+            
+            const note = pkg.note ? ` (${pkg.note})` : '';
+            
+            // For legacy packages, calculate price from weight
+            const calculatedPrice = this.currentProduct.price_per_kg * pkg.weight;
+            
+            // For legacy packages, use product image as fallback with better error handling
+            const getLegacyPackageFallback = (weight, unit) => {
+                const weightStr = `${weight}${unit}`;
+                if (weightStr.includes('0.5') || weightStr.includes('500')) return '/images/package-500g.svg';
+                if (weightStr.includes('1') && unit === 'kg') return '/images/package-1kg.svg';
+                return '/images/placeholder.svg';
+            };
+            
+            const packageImage = this.currentProduct.image_url ? 
+                `<img src="${this.currentProduct.image_url}" alt="${pkg.weight} ${pkg.unit}" class="package-image loading" onload="this.classList.remove('loading')" onerror="this.onerror=null; this.src='${getLegacyPackageFallback(pkg.weight, pkg.unit)}'; this.classList.remove('loading'); this.classList.add('fallback-image');">` : 
+                `<img src="${getLegacyPackageFallback(pkg.weight, pkg.unit)}" alt="${pkg.weight} ${pkg.unit}" class="package-image fallback-image" title="Зображення упаковки ${pkg.weight} ${pkg.unit}">`;
+            
+            label.innerHTML = `
+                <input type="radio" name="package" value="${pkg.id}" ${index === 0 ? 'checked' : ''}>
+                <div class="package-content">
+                    ${packageImage}
+                    <span class="package-text">${pkg.weight} ${pkg.unit}${note} - ${calculatedPrice} грн</span>
+                </div>
+            `;
+            
+            packageList.appendChild(label);
+            
+            // Auto-select first package
+            if (index === 0) {
+                this.selectedPackage = {
+                    ...pkg,
+                    price: calculatedPrice // Add calculated price for legacy packages
+                };
+                label.classList.add('selected');
+            }
+        });
+        
+        this.updateTotalPrice();
+    }
+    
+    handlePackageSelection(packageId) {
+        if (!this.currentPackages) return;
+        
+        // Find the package by its database ID (not package_id)
+        const foundPackage = this.currentPackages.find(pkg => pkg.id == packageId);
+        
+        if (foundPackage) {
+            // For legacy packages, add calculated price if not present
+            if (!foundPackage.price && this.currentProduct) {
+                this.selectedPackage = {
+                    ...foundPackage,
+                    price: this.currentProduct.price_per_kg * foundPackage.weight
+                };
+            } else {
+                this.selectedPackage = foundPackage;
+            }
+        }
+        
         this.updateTotalPrice();
     }
     
@@ -325,10 +447,16 @@ class SeafoodStoreApp {
         if (!this.currentProduct || !this.selectedPackage) return;
         
         const quantity = parseInt(document.getElementById('quantity-input').value) || 1;
-        const unitPrice = this.currentProduct.price_per_kg * this.selectedPackage.weight;
-        const totalPrice = quantity * unitPrice;
         
-        document.getElementById('total-price').textContent = `${totalPrice} грн`;
+        // Get unit price - use package price if available, otherwise calculate from weight
+        let unitPrice = this.selectedPackage.price;
+        if (!unitPrice && this.selectedPackage.weight && this.currentProduct.price_per_kg) {
+            unitPrice = this.currentProduct.price_per_kg * this.selectedPackage.weight;
+        }
+        
+        const totalPrice = quantity * (unitPrice || 0);
+        
+        document.getElementById('total-price').textContent = `${Math.round(totalPrice)} грн`;
     }
     
     addToCart() {

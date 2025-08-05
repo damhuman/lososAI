@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Category, Product, User, Order, PromoCode, District, AdminUser, PaginatedResponse } from '../types';
+import { Category, Product, ProductPackage, User, Order, PromoCode, District, AdminUser, PaginatedResponse } from '../types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
 
@@ -333,6 +333,40 @@ export const promoCodesAPI = {
   
   delete: async (id: number): Promise<void> => {
     await api.delete(`/admin/promo-codes/${id}`);
+  }
+};
+
+// Product Packages API
+export const packagesAPI = {
+  getByProduct: async (productId: string): Promise<ProductPackage[]> => {
+    const response = await api.get(`/admin/products/${productId}/packages`);
+    return response.data;
+  },
+  
+  create: async (productId: string, packageData: Omit<ProductPackage, 'id' | 'product_id' | 'created_at' | 'updated_at'>): Promise<ProductPackage> => {
+    const response = await api.post(`/admin/products/${productId}/packages`, packageData);
+    return response.data;
+  },
+  
+  update: async (productId: string, packageId: number, packageData: Partial<ProductPackage>): Promise<ProductPackage> => {
+    const response = await api.put(`/admin/products/${productId}/packages/${packageId}`, packageData);
+    return response.data;
+  },
+  
+  delete: async (productId: string, packageId: number): Promise<void> => {
+    await api.delete(`/admin/products/${productId}/packages/${packageId}`);
+  },
+  
+  uploadImage: async (productId: string, packageId: number, file: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await api.post(`/admin/products/${productId}/packages/${packageId}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   }
 };
 

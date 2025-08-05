@@ -5,13 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_async_session
-from app.db.models.product import Product
-from app.schemas.product import Product as ProductSchema
+from app.db.models.product import Product, ProductPackage
+from app.schemas.product import Product as ProductSchema, ProductWithPackages
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ProductSchema])
+@router.get("/", response_model=List[ProductWithPackages])
 async def get_products(
     category_id: Optional[str] = Query(None, description="Filter by category ID"),
     featured: Optional[bool] = Query(None, description="Filter by featured products"),
@@ -20,7 +20,10 @@ async def get_products(
     """Get all active products with optional filtering"""
     query = (
         select(Product)
-        .options(selectinload(Product.category))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.product_packages)
+        )
         .where(Product.is_active == True)
     )
     
@@ -39,14 +42,17 @@ async def get_products(
     return products
 
 
-@router.get("/featured", response_model=List[ProductSchema])
+@router.get("/featured", response_model=List[ProductWithPackages])
 async def get_featured_products(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Get all featured products"""
     query = (
         select(Product)
-        .options(selectinload(Product.category))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.product_packages)
+        )
         .where(
             Product.is_active == True,
             Product.is_featured == True
@@ -59,7 +65,7 @@ async def get_featured_products(
     return products
 
 
-@router.get("/{product_id}", response_model=ProductSchema)
+@router.get("/{product_id}", response_model=ProductWithPackages)
 async def get_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session)
@@ -67,7 +73,10 @@ async def get_product(
     """Get product details by ID"""
     query = (
         select(Product)
-        .options(selectinload(Product.category))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.product_packages)
+        )
         .where(
             Product.id == product_id,
             Product.is_active == True

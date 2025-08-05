@@ -22,11 +22,13 @@ import {
   EditOutlined, 
   DeleteOutlined, 
   UploadOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { categoriesAPI, productsAPI } from '../services/api';
 import { Product, PackageInfo } from '../types';
+import PackageManager from '../components/PackageManager';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -38,6 +40,8 @@ const Products: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [packageManagerVisible, setPackageManagerVisible] = useState(false);
+  const [selectedProductForPackages, setSelectedProductForPackages] = useState<Product | null>(null);
   const queryClient = useQueryClient();
 
   // Check if device is mobile
@@ -116,19 +120,13 @@ const Products: React.FC = () => {
     setEditingProduct(null);
     form.resetFields();
     setImageUrl('');
-    form.setFieldsValue({
-      packages: [{ id: '', weight: 0, unit: 'кг', available: true }]
-    });
     setIsModalVisible(true);
   };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setImageUrl(product.image_url || '');
-    form.setFieldsValue({
-      ...product,
-      packages: product.packages || [{ id: '', weight: 0, unit: 'кг', available: true }]
-    });
+    form.setFieldsValue(product);
     setIsModalVisible(true);
   };
 
@@ -141,14 +139,7 @@ const Products: React.FC = () => {
       const values = await form.validateFields();
       const productData = {
         ...values,
-        image_url: imageUrl,
-        packages: values.packages
-          .filter((pkg: any) => pkg.id && pkg.weight > 0)
-          .map((pkg: any) => ({
-            ...pkg,
-            type: pkg.type || `${pkg.weight}${pkg.unit}`,
-            price: pkg.price || (values.price_per_kg * pkg.weight)
-          }))
+        image_url: imageUrl
       };
       
       if (editingProduct) {
@@ -199,14 +190,9 @@ const Products: React.FC = () => {
               <span style={{ marginLeft: 8 }}>{record.price_per_kg} грн/кг</span>
             </div>
             <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {record.packages?.slice(0, 2).map((pkg, index) => (
-                <Tag key={index} color="green">
-                  {pkg.weight} {pkg.unit}
-                </Tag>
-              ))}
-              {(record.packages?.length || 0) > 2 && (
-                <Tag>+{(record.packages?.length || 0) - 2}</Tag>
-              )}
+              <Tag color="blue" style={{ fontSize: '11px' }}>
+                Упаковки: {record.product_packages?.length || 0}
+              </Tag>
             </div>
           </div>
         </div>
@@ -227,6 +213,18 @@ const Products: React.FC = () => {
             style={{ width: '100%' }}
           >
             Редагувати
+          </Button>
+          <Button
+            type="default"
+            size="small"
+            icon={<AppstoreOutlined />}
+            onClick={() => {
+              setSelectedProductForPackages(record);
+              setPackageManagerVisible(true);
+            }}
+            style={{ width: '100%' }}
+          >
+            Упаковки
           </Button>
           <Popconfirm
             title="Видалити товар?"
@@ -306,17 +304,12 @@ const Products: React.FC = () => {
       render: (price: number) => `${price} грн`,
     },
     {
-      title: 'Фасування',
-      dataIndex: 'packages',
-      key: 'packages',
-      render: (packages: PackageInfo[]) => (
-        <div>
-          {packages.map((pkg, index) => (
-            <Tag key={index} color="green">
-              {pkg.weight} {pkg.unit}
-            </Tag>
-          ))}
-        </div>
+      title: 'Упаковки',
+      key: 'product_packages',
+      render: (_: any, record: Product) => (
+        <Tag color="blue">
+          {record.product_packages?.length || 0} упаковок
+        </Tag>
       ),
     },
     {
@@ -345,6 +338,17 @@ const Products: React.FC = () => {
             onClick={() => handleEdit(record)}
           >
             Редагувати
+          </Button>
+          <Button
+            type="default"
+            size="small"
+            icon={<AppstoreOutlined />}
+            onClick={() => {
+              setSelectedProductForPackages(record);
+              setPackageManagerVisible(true);
+            }}
+          >
+            Упаковки
           </Button>
           <Popconfirm
             title="Ви впевнені, що хочете видалити цей товар?"
@@ -427,8 +431,7 @@ const Products: React.FC = () => {
           layout="vertical"
           initialValues={{ 
             is_active: true, 
-            is_featured: false,
-            packages: [{ id: '', weight: 0, unit: 'кг', available: true }]
+            is_featured: false
           }}
         >
           <Form.Item
@@ -436,7 +439,7 @@ const Products: React.FC = () => {
             label="ID товару"
             rules={[
               { required: true, message: 'Будь ласка, введіть ID товару!' },
-              { pattern: /^[a-z_0-9]+$/, message: 'ID повинен містити лише малі літери, цифри та підкреслення!' }
+              { pattern: /^[a-z_0-9-]+$/, message: 'ID повинен містити лише малі літери, цифри, підкреслення та дефіси!' }
             ]}
           >
             <Input disabled={!!editingProduct} placeholder="salmon_fresh_001" />
@@ -518,107 +521,6 @@ const Products: React.FC = () => {
             </Upload>
           </Form.Item>
 
-          <Divider>Фасування</Divider>
-
-          <Form.List name="packages">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Card 
-                    key={key} 
-                    size="small" 
-                    style={{ marginBottom: 16 }}
-                    extra={
-                      <Button 
-                        type="link" 
-                        danger 
-                        onClick={() => remove(name)}
-                      >
-                        Видалити
-                      </Button>
-                    }
-                  >
-                    <Space 
-                      align="baseline" 
-                      style={{ 
-                        display: 'flex', 
-                        marginBottom: 8, 
-                        flexWrap: 'wrap',
-                        width: '100%'
-                      }}
-                      direction={isMobile ? "vertical" : "horizontal"}
-                      size={isMobile ? "small" : "middle"}
-                    >
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'id']}
-                        label="ID"
-                        rules={[{ required: true, message: 'ID обов\'язковий!' }]}
-                      >
-                        <Input placeholder="1kg" style={{ width: isMobile ? '100%' : 100 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'type']}
-                        label="Тип"
-                        rules={[{ required: true, message: 'Тип обов\'язковий!' }]}
-                      >
-                        <Input placeholder="1кг" style={{ width: isMobile ? '100%' : 100 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'weight']}
-                        label="Вага"
-                        rules={[{ required: true, message: 'Вага обов\'язкова!' }]}
-                      >
-                        <InputNumber min={0} placeholder="1" style={{ width: isMobile ? '100%' : 100 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'unit']}
-                        label="Одиниця"
-                        rules={[{ required: true, message: 'Одиниця обов\'язкова!' }]}
-                      >
-                        <Select style={{ width: isMobile ? '100%' : 80 }}>
-                          <Option value="г">г</Option>
-                          <Option value="кг">кг</Option>
-                          <Option value="шт">шт</Option>
-                          <Option value="набір">набір</Option>
-                        </Select>
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'price']}
-                        label="Ціна"
-                        rules={[{ required: true, message: 'Ціна обов\'язкова!' }]}
-                      >
-                        <InputNumber min={0} placeholder="0" style={{ width: isMobile ? '100%' : 100 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'available']}
-                        label="Доступний"
-                        valuePropName="checked"
-                      >
-                        <Switch />
-                      </Form.Item>
-                    </Space>
-                  </Card>
-                ))}
-                <Form.Item>
-                  <Button 
-                    type="dashed" 
-                    onClick={() => add({ id: '', weight: 0, unit: 'кг', available: true })} 
-                    block 
-                    icon={<PlusOutlined />}
-                  >
-                    Додати фасування
-                  </Button>
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
-
           <Divider />
 
           <Space>
@@ -651,6 +553,19 @@ const Products: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Package Manager Modal */}
+      {selectedProductForPackages && (
+        <PackageManager
+          productId={selectedProductForPackages.id}
+          productName={selectedProductForPackages.name}
+          visible={packageManagerVisible}
+          onClose={() => {
+            setPackageManagerVisible(false);
+            setSelectedProductForPackages(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text, JSON, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from app.db.session import Base
 
@@ -31,9 +32,9 @@ class Product(Base):
     price_per_kg = Column(Float, nullable=False)
     image_url = Column(String, nullable=True)
     
-    # Available packages as JSON
+    # Available packages as JSON (DEPRECATED - use ProductPackage model instead)
     # Format: [{"id": "1kg", "weight": 1, "unit": "кг", "available": true}]
-    packages = Column(JSON, nullable=False, default=list)
+    packages = Column(JSON, nullable=True, default=list)
     
     # Status
     is_active = Column(Boolean, default=True)
@@ -44,6 +45,7 @@ class Product(Base):
     
     # Relationships
     category = relationship("Category", back_populates="products")
+    product_packages = relationship("ProductPackage", back_populates="product", cascade="all, delete-orphan", order_by="ProductPackage.sort_order")
     # order_items = relationship("OrderItem", back_populates="product")  # Temporarily disabled
     
     def __repr__(self):
@@ -59,10 +61,38 @@ class District(Base):
     delivery_cost = Column(Float, default=0)  # Additional delivery cost if any
     
     # Relationships - using string reference to avoid circular import
-    orders = relationship("Order", back_populates="district")
+    # orders = relationship("Order", back_populates="district")  # Temporarily disabled
     
     def __repr__(self):
         return f"<District {self.id}: {self.name}>"
+
+
+class ProductPackage(Base):
+    __tablename__ = "product_packages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+    package_id = Column(String, nullable=False, index=True)  # e.g., "300g", "1kg"
+    name = Column(String, nullable=False)  # Display name e.g., "300 грам"
+    weight = Column(Float, nullable=False)
+    unit = Column(String, nullable=False)  # "г", "кг", "шт", "набір"
+    price = Column(Float, nullable=False)
+    image_url = Column(String, nullable=True)
+    available = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    note = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    product = relationship("Product", back_populates="product_packages")
+    
+    def __repr__(self):
+        return f"<ProductPackage {self.product_id}:{self.package_id}>"
+    
+    __table_args__ = (
+        UniqueConstraint('product_id', 'package_id', name='uq_product_package_id'),
+    )
 
 
 class PromoCode(Base):

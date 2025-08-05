@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -98,3 +99,48 @@ class PromoCodeResponse(BaseModel):
     discount_amount: float = 0
     is_gold_code: bool = False
     message: Optional[str] = None
+
+
+# ProductPackage schemas
+class ProductPackageBase(BaseModel):
+    package_id: str
+    name: str
+    weight: float
+    unit: str
+    price: float
+    image_url: Optional[str] = None
+    available: bool = True
+    sort_order: int = 0
+    note: Optional[str] = None
+
+
+class ProductPackageCreate(ProductPackageBase):
+    product_id: str
+
+
+class ProductPackageUpdate(BaseModel):
+    name: Optional[str] = None
+    weight: Optional[float] = None
+    unit: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
+    available: Optional[bool] = None
+    sort_order: Optional[int] = None
+    note: Optional[str] = None
+
+
+class ProductPackage(ProductPackageBase):
+    id: int
+    product_id: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class ProductWithPackages(Product):
+    product_packages: List[ProductPackage] = []
+    
+    class Config:
+        from_attributes = True
