@@ -3,13 +3,19 @@ from pydantic import BaseModel
 
 
 class PackageInfo(BaseModel):
-    id: str  # Package ID
+    id: Optional[str] = None  # Package ID
     type: Optional[str] = None  # Package type like "300g", "1kg", etc.
     weight: float
     unit: str
     price: Optional[float] = None
     available: bool
     note: Optional[str] = None
+    
+    def __init__(self, **data):
+        # If id is missing but type exists, use type as id
+        if 'id' not in data and 'type' in data:
+            data['id'] = data['type']
+        super().__init__(**data)
 
 
 class CategoryBase(BaseModel):

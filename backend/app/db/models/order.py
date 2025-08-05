@@ -76,7 +76,7 @@ class OrderItem(Base):
     
     # Relationships
     order = relationship("Order", back_populates="items")
-    product = relationship("Product", back_populates="order_items")
+    product = relationship("Product")  # Temporarily removed back_populates
     
     def __repr__(self):
         return f"<OrderItem: {self.product_name} x{self.quantity}>"

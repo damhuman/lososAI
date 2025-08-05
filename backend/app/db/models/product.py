@@ -44,7 +44,7 @@ class Product(Base):
     
     # Relationships
     category = relationship("Category", back_populates="products")
-    order_items = relationship("OrderItem", back_populates="product")
+    # order_items = relationship("OrderItem", back_populates="product")  # Temporarily disabled
     
     def __repr__(self):
         return f"<Product {self.id}: {self.name}>"
