@@ -30,21 +30,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const username = localStorage.getItem('admin_username');
-      const password = localStorage.getItem('admin_password');
+      const accessToken = localStorage.getItem('access_token');
+      const storedUser = localStorage.getItem('admin_user');
       
-      if (username && password) {
+      if (accessToken && storedUser) {
         try {
-          const isValid = await authAPI.verifyToken();
-          if (isValid) {
-            setUser({ username, token: btoa(`${username}:${password}`) });
-          } else {
-            localStorage.removeItem('admin_username');
-            localStorage.removeItem('admin_password');
-          }
+          // Try to get current user info to verify token
+          const currentUser = await authAPI.getCurrentUser();
+          setUser(currentUser);
         } catch (error) {
-          localStorage.removeItem('admin_username');
-          localStorage.removeItem('admin_password');
+          // If token is invalid, try to refresh
+          const refreshToken = localStorage.getItem('refresh_token');
+          if (refreshToken) {
+            try {
+              const tokens = await authAPI.refresh();
+              localStorage.setItem('access_token', tokens.access_token);
+              localStorage.setItem('refresh_token', tokens.refresh_token);
+              
+              // Get user info with new token
+              const currentUser = await authAPI.getCurrentUser();
+              setUser(currentUser);
+            } catch (refreshError) {
+              // Refresh failed, clear everything
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              localStorage.removeItem('admin_user');
+            }
+          } else {
+            // No refresh token, clear everything
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('admin_user');
+          }
         }
       }
       setLoading(false);
@@ -68,8 +84,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('admin_username');
-      localStorage.removeItem('admin_password');
       setUser(null);
     }
   };

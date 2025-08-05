@@ -95,8 +95,22 @@ export interface PromoCode {
 }
 
 export interface AdminUser {
+  id: number;
   username: string;
-  token: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
+}
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
+
+export interface LoginResponse extends AuthTokens {
+  admin: AdminUser;
 }
 
 export interface ApiResponse<T> {

@@ -10,8 +10,31 @@ class AdminLogin(BaseModel):
     password: str
 
 class AdminUserResponse(BaseModel):
+    id: int
     username: str
-    token: str
+    email: str
+    is_active: bool
+    created_at: datetime
+    last_login: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+class LoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    admin: AdminUserResponse
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
 
 # Generic response schemas
 class PaginatedResponse(BaseModel, Generic[T]):

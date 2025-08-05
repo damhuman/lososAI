@@ -11,26 +11,54 @@ const api = axios.create({
   },
 });
 
-// Add basic auth to requests
+// Add JWT token to requests
 api.interceptors.request.use((config) => {
-  const username = localStorage.getItem('admin_username');
-  const password = localStorage.getItem('admin_password');
-  if (username && password) {
-    const encodedCredentials = btoa(`${username}:${password}`);
-    config.headers.Authorization = `Basic ${encodedCredentials}`;
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Add response error interceptor
+// Add response error interceptor with token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Handle authentication errors
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_username');
-      localStorage.removeItem('admin_password');
-      window.location.href = '/admin/login';
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Handle 401 errors with token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/admin/auth/refresh`, {
+            refresh_token: refreshToken
+          });
+          
+          const { access_token, refresh_token: newRefreshToken } = response.data;
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', newRefreshToken);
+          
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed, clear tokens and redirect to login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('admin_user');
+          window.location.href = '/admin/login';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No refresh token, redirect to login
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('admin_user');
+        window.location.href = '/admin/login';
+      }
     }
     
     // Handle network errors
@@ -50,30 +78,60 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (username: string, password: string): Promise<AdminUser> => {
-    // Store credentials for basic auth
-    localStorage.setItem('admin_username', username);
-    localStorage.setItem('admin_password', password);
-    
-    // Verify credentials by making a test request
     try {
-      await api.get('/admin/verify');
-      return { username, token: btoa(`${username}:${password}`) };
+      const response = await axios.post(`${API_BASE_URL}/admin/auth/login`, {
+        username,
+        password
+      });
+      
+      const { access_token, refresh_token, admin } = response.data;
+      
+      // Store tokens and user info
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
+      localStorage.setItem('admin_user', JSON.stringify(admin));
+      
+      return admin;
     } catch (error) {
-      // Clear stored credentials if login fails
-      localStorage.removeItem('admin_username');
-      localStorage.removeItem('admin_password');
       throw error;
     }
   },
   
   logout: async (): Promise<void> => {
-    localStorage.removeItem('admin_username');
-    localStorage.removeItem('admin_password');
+    try {
+      await api.post('/admin/auth/logout');
+    } catch (error) {
+      // Continue with logout even if request fails
+      console.warn('Logout request failed:', error);
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('admin_user');
+    }
+  },
+  
+  refresh: async (): Promise<{ access_token: string; refresh_token: string }> => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+    
+    const response = await axios.post(`${API_BASE_URL}/admin/auth/refresh`, {
+      refresh_token: refreshToken
+    });
+    
+    return response.data;
+  },
+  
+  getCurrentUser: async (): Promise<AdminUser> => {
+    const response = await api.get('/admin/auth/me');
+    return response.data;
   },
   
   verifyToken: async (): Promise<boolean> => {
     try {
-      await api.get('/admin/verify');
+      await api.get('/admin/auth/me');
       return true;
     } catch {
       return false;

@@ -1,52 +1,27 @@
 from typing import List, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.exc import IntegrityError
-import secrets
 
-from app.api.deps import get_async_session
-from app.core.config import settings
+from app.api.deps import get_async_session, get_current_admin
 from app.db.models.product import Category, Product, District, PromoCode
 from app.db.models.user import User
 from app.db.models.order import Order, OrderItem
+from app.db.models.admin import AdminUser
 from app.schemas.product import Category as CategorySchema, Product as ProductSchema
 from app.schemas.admin import *
 from app.services.s3 import s3_service
 
 router = APIRouter()
-basic_security = HTTPBasic()
-
-# Admin Authentication
-
-def verify_basic_auth(credentials: HTTPBasicCredentials = Depends(basic_security)):
-    """Verify basic authentication credentials"""
-    is_correct_username = secrets.compare_digest(credentials.username, settings.ADMIN_USERNAME)
-    is_correct_password = secrets.compare_digest(credentials.password, settings.ADMIN_PASSWORD)
-    
-    if not (is_correct_username and is_correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
-
-# Basic auth doesn't need login/logout endpoints
-
-@router.get("/verify")
-async def verify_admin_token(username: str = Depends(verify_basic_auth)):
-    """Verify admin credentials"""
-    return {"username": username, "valid": True}
 
 # File Upload
 @router.post("/upload/image", response_model=ImageUploadResponse)
 async def upload_image(
     image: UploadFile = File(...),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Upload image to S3"""
     try:
@@ -59,7 +34,7 @@ async def upload_image(
 @router.get("/categories", response_model=List[CategorySchema])
 async def get_admin_categories(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get all categories for admin"""
     query = select(Category).order_by(Category.order)
@@ -71,7 +46,7 @@ async def get_admin_categories(
 async def create_category(
     category: CategoryCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Create new category"""
     try:
@@ -89,7 +64,7 @@ async def update_category(
     category_id: str,
     category: CategoryUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update category"""
     query = select(Category).where(Category.id == category_id)
@@ -110,7 +85,7 @@ async def update_category(
 async def delete_category(
     category_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Delete category"""
     query = select(Category).where(Category.id == category_id)
@@ -130,7 +105,7 @@ async def get_admin_products(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get paginated products for admin"""
     offset = (page - 1) * size
@@ -161,7 +136,7 @@ async def get_admin_products(
 @router.get("/products/stats")
 async def get_product_stats(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get product statistics"""
     total_products_query = select(func.count(Product.id))
@@ -185,7 +160,7 @@ async def get_product_stats(
 async def get_admin_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get product by ID"""
     query = select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
@@ -201,7 +176,7 @@ async def get_admin_product(
 async def create_product(
     product: ProductCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Create new product"""
     try:
@@ -222,7 +197,7 @@ async def update_product(
     product_id: str,
     product: ProductUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update product"""
     query = select(Product).where(Product.id == product_id)
@@ -247,7 +222,7 @@ async def update_product(
 async def delete_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Delete product"""
     query = select(Product).where(Product.id == product_id)
@@ -272,7 +247,7 @@ async def get_admin_users(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get paginated users for admin"""
     offset = (page - 1) * size
@@ -302,7 +277,7 @@ async def get_admin_users(
 @router.get("/users/stats", response_model=UserStats)
 async def get_user_stats(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get user statistics"""
     total_query = select(func.count(User.id))
@@ -326,7 +301,7 @@ async def get_user_stats(
 async def get_user_by_id(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get user by ID"""
     query = select(User).where(User.id == user_id)
@@ -343,7 +318,7 @@ async def update_user(
     user_id: int,
     user: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update user"""
     query = select(User).where(User.id == user_id)
@@ -370,7 +345,7 @@ async def get_admin_orders(
     end_date: Optional[str] = Query(None),
     order_id: Optional[int] = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get paginated orders for admin"""
     offset = (page - 1) * size
@@ -438,7 +413,7 @@ async def get_order_stats(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get order statistics"""
     # Build filters
@@ -496,7 +471,7 @@ async def export_orders_report(
     start_date: str = Query(...),
     end_date: str = Query(...),
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Export orders report as Excel"""
     try:
@@ -593,7 +568,7 @@ async def export_orders_report(
 async def get_admin_order(
     order_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get order by ID"""
     query = (
@@ -618,7 +593,7 @@ async def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update order status"""
     query = select(Order).where(Order.id == order_id)
@@ -639,7 +614,7 @@ async def update_order_status(
 @router.get("/districts", response_model=List[DistrictResponse])
 async def get_admin_districts(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get all districts for admin"""
     query = select(District).order_by(District.name)
@@ -651,7 +626,7 @@ async def get_admin_districts(
 async def get_district_by_id(
     district_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get district by ID"""
     query = select(District).where(District.id == district_id)
@@ -667,7 +642,7 @@ async def get_district_by_id(
 async def create_district(
     district: DistrictCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Create new district"""
     db_district = District(**district.dict())
@@ -681,7 +656,7 @@ async def update_district(
     district_id: int,
     district: DistrictUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update district"""
     query = select(District).where(District.id == district_id)
@@ -702,7 +677,7 @@ async def update_district(
 async def delete_district(
     district_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Delete district"""
     query = select(District).where(District.id == district_id)
@@ -720,7 +695,7 @@ async def delete_district(
 @router.get("/promo-codes", response_model=List[PromoCodeResponse])
 async def get_admin_promo_codes(
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get all promo codes for admin"""
     query = select(PromoCode).order_by(desc(PromoCode.id))
@@ -732,7 +707,7 @@ async def get_admin_promo_codes(
 async def get_promo_code_by_id(
     promo_code_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Get promo code by ID"""
     query = select(PromoCode).where(PromoCode.id == promo_code_id)
@@ -748,7 +723,7 @@ async def get_promo_code_by_id(
 async def create_promo_code(
     promo_code: PromoCodeCreate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Create new promo code"""
     try:
@@ -766,7 +741,7 @@ async def update_promo_code(
     promo_code_id: int,
     promo_code: PromoCodeUpdate,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Update promo code"""
     query = select(PromoCode).where(PromoCode.id == promo_code_id)
@@ -787,7 +762,7 @@ async def update_promo_code(
 async def delete_promo_code(
     promo_code_id: int,
     session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Delete promo code"""
     query = select(PromoCode).where(PromoCode.id == promo_code_id)

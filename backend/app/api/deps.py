@@ -1,12 +1,15 @@
 from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.telegram_auth import TelegramAuth
+from app.core.security import verify_token, get_admin_by_id
 from app.db.session import get_async_session
 from app.db.models.user import User
+from app.db.models.admin import AdminUser
 
 
 # Initialize Telegram auth
@@ -103,3 +106,38 @@ async def get_optional_user(
         return await get_current_user(authorization, session)
     except HTTPException:
         return None
+
+
+# JWT Bearer scheme for admin authentication
+bearer_scheme = HTTPBearer()
+
+
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    session: AsyncSession = Depends(get_async_session)
+) -> AdminUser:
+    """Get current admin user from JWT token"""
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication token"
+        )
+    
+    # Verify the access token
+    admin_id = verify_token(credentials.credentials, token_type="access")
+    if not admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Get admin user from database
+    admin = await get_admin_by_id(session, int(admin_id))
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin user not found or inactive"
+        )
+    
+    return admin
