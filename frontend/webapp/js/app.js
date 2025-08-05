@@ -172,6 +172,25 @@ class SeafoodStoreApp {
         document.getElementById('checkout-form')?.addEventListener('change', () => {
             this.validateCheckoutForm();
         });
+        
+        // Time slot selection visual feedback
+        document.addEventListener('change', (e) => {
+            if (e.target.type === 'radio' && e.target.name === 'delivery-time') {
+                // Remove selected class from all time slot cards
+                document.querySelectorAll('.time-slot-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                
+                // Add selected class to the clicked card
+                const selectedCard = e.target.closest('.time-slot-card');
+                if (selectedCard) {
+                    selectedCard.classList.add('selected');
+                }
+                
+                // Trigger form validation
+                this.validateCheckoutForm();
+            }
+        });
     }
     
     async handleScreenChange(screenName, data) {

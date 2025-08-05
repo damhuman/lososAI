@@ -32,6 +32,43 @@ class ShoppingCart {
             console.log('Cart item count:', itemCount);
             badge.textContent = itemCount > 0 ? itemCount.toString() : '';
             badge.classList.toggle('hidden', itemCount === 0);
+            
+            // Apply NUCLEAR drag prevention to badge every time it's updated
+            badge.setAttribute('draggable', 'false');
+            badge.setAttribute('unselectable', 'on');
+            badge.style.userSelect = 'none';
+            badge.style.webkitUserSelect = 'none';
+            badge.style.mozUserSelect = 'none';
+            badge.style.msUserSelect = 'none';
+            badge.style.webkitUserDrag = 'none';
+            badge.style.webkitTouchCallout = 'none';
+            badge.style.touchAction = 'none';
+            badge.style.contain = 'layout style paint';
+            badge.style.position = 'absolute';
+            badge.style.top = '-4px';
+            badge.style.right = '-4px';
+            
+            // Add event listeners to badge specifically
+            const preventDrag = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            };
+            
+            const badgeEvents = [
+                'dragstart', 'drag', 'dragend', 'dragenter', 'dragleave', 
+                'dragover', 'drop', 'selectstart', 'mousedown', 'touchstart',
+                'touchmove', 'touchend'
+            ];
+            
+            badgeEvents.forEach(eventType => {
+                badge.removeEventListener(eventType, preventDrag); // Remove old listeners
+                badge.addEventListener(eventType, preventDrag, { 
+                    capture: true, 
+                    passive: false 
+                });
+            });
         }
     }
     
@@ -141,6 +178,126 @@ class ShoppingCart {
                 window.router?.navigateTo('cart');
                 window.telegramWebApp?.hapticFeedback('light');
             });
+            
+            // EXTREME drag prevention - multiple event types
+            const preventDrag = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            };
+            
+            // Add multiple event listeners
+            const dragEvents = [
+                'dragstart', 'drag', 'dragend', 'dragenter', 'dragleave', 
+                'dragover', 'drop', 'selectstart', 'mousedown'
+            ];
+            
+            dragEvents.forEach(eventType => {
+                cartIcon.addEventListener(eventType, preventDrag, { 
+                    capture: true, 
+                    passive: false 
+                });
+            });
+            
+            // Prevent touch drag on mobile with multiple events
+            const touchEvents = ['touchstart', 'touchmove', 'touchend'];
+            touchEvents.forEach(eventType => {
+                cartIcon.addEventListener(eventType, (e) => {
+                    if (eventType === 'touchmove') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }, { passive: false });
+            });
+            
+            // Force attributes
+            cartIcon.setAttribute('draggable', 'false');
+            cartIcon.setAttribute('unselectable', 'on');
+            cartIcon.style.userSelect = 'none';
+            cartIcon.style.webkitUserSelect = 'none';
+            cartIcon.style.mozUserSelect = 'none';
+            cartIcon.style.msUserSelect = 'none';
+            
+            // Apply to all child elements recursively
+            const applyToElement = (element) => {
+                element.setAttribute('draggable', 'false');
+                element.setAttribute('unselectable', 'on');
+                
+                dragEvents.forEach(eventType => {
+                    element.addEventListener(eventType, preventDrag, { 
+                        capture: true, 
+                        passive: false 
+                    });
+                });
+                
+                // Apply to children
+                Array.from(element.children).forEach(child => {
+                    applyToElement(child);
+                });
+            };
+            
+            applyToElement(cartIcon);
+            
+            // Global prevention for cart icon specifically
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.closest('#cart-icon')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, { capture: true });
+            
+            // Force position reset if somehow moved
+            const resetPosition = () => {
+                cartIcon.style.position = 'fixed';
+                cartIcon.style.top = '16px';
+                cartIcon.style.right = '16px';
+            };
+            
+            // Badge position reset
+            const resetBadgePosition = () => {
+                const badge = document.getElementById('cart-badge');
+                if (badge) {
+                    badge.style.position = 'absolute';
+                    badge.style.top = '-4px';
+                    badge.style.right = '-4px';
+                    badge.style.pointerEvents = 'none';
+                }
+            };
+            
+            // Monitor for position changes on cart icon
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && 
+                        (mutation.attributeName === 'style' || 
+                         mutation.attributeName === 'class')) {
+                        resetPosition();
+                    }
+                });
+            });
+            
+            observer.observe(cartIcon, {
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+            
+            // Monitor badge specifically
+            const badge = document.getElementById('cart-badge');
+            if (badge) {
+                const badgeObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes') {
+                            resetBadgePosition();
+                        }
+                    });
+                });
+                
+                badgeObserver.observe(badge, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class', 'draggable']
+                });
+            }
         }
     }
     
@@ -150,9 +307,9 @@ class ShoppingCart {
     }
     
     getItemCount() {
-        // Count unique items (positions) in cart, not total quantity
-        const count = this.items.length;
-        console.log('getItemCount - unique items:', count);
+        // Count total quantity of all items in cart
+        const count = this.items.reduce((total, item) => total + item.quantity, 0);
+        console.log('getItemCount - total quantity:', count);
         return count;
     }
     
