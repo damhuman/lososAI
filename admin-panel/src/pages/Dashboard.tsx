@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Row, Col, Statistic, Table, Tag } from 'antd';
+import React, { Fragment } from 'react';
+import { Card, Row, Col, Statistic, Table, Tag, Alert, Empty } from 'antd';
 import { 
   ShoppingCartOutlined, 
   UserOutlined, 
@@ -8,17 +8,25 @@ import {
   AppstoreOutlined,
   TagsOutlined
 } from '@ant-design/icons';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { ordersAPI, usersAPI, productsAPI, categoriesAPI } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useResponsive } from '../hooks/useResponsive';
+import ErrorAlert from '../components/ErrorAlert';
 
 const Dashboard: React.FC = () => {
-  const { data: orderStats } = useQuery('order-stats', () => ordersAPI.getStats());
-  const { data: userStats } = useQuery('user-stats', () => usersAPI.getStats());
-  const { data: productStats } = useQuery('product-stats', () => productsAPI.getStats());
-  const { data: recentOrders } = useQuery('recent-orders', () => 
-    ordersAPI.getAll(1, 5)
+  const { isMobile, isTablet } = useResponsive();
+  const queryClient = useQueryClient();
+  
+  const { data: orderStats, error: orderStatsError, isLoading: orderStatsLoading, refetch: refetchOrderStats } = useQuery('order-stats', () => ordersAPI.getStats());
+  const { data: userStats, error: userStatsError, isLoading: userStatsLoading, refetch: refetchUserStats } = useQuery('user-stats', () => usersAPI.getStats());
+  const { data: productStats, error: productStatsError, isLoading: productStatsLoading, refetch: refetchProductStats } = useQuery('product-stats', () => productsAPI.getStats());
+  const { data: recentOrders, error: recentOrdersError, isLoading: recentOrdersLoading, refetch: refetchRecentOrders } = useQuery('recent-orders', () => 
+    ordersAPI.getAll(1, isMobile ? 3 : 5)
   );
+
+  // Check if any critical data failed to load
+  const hasError = orderStatsError || userStatsError || productStatsError || recentOrdersError;
 
   const chartData = [
     { name: 'Пн', orders: 12, revenue: 1200 },
@@ -72,8 +80,38 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div>
+    <>
       <h1 style={{ marginBottom: 24 }}>Панель управління</h1>
+      
+      {/* Show error alerts if any data failed to load */}
+      {orderStatsError && (
+        <ErrorAlert 
+          error={orderStatsError} 
+          onRetry={() => refetchOrderStats()}
+          message="Не вдалося завантажити статистику замовлень"
+        />
+      )}
+      {userStatsError && (
+        <ErrorAlert 
+          error={userStatsError} 
+          onRetry={() => refetchUserStats()}
+          message="Не вдалося завантажити статистику користувачів"
+        />
+      )}
+      {productStatsError && (
+        <ErrorAlert 
+          error={productStatsError} 
+          onRetry={() => refetchProductStats()}
+          message="Не вдалося завантажити статистику товарів"
+        />
+      )}
+      {recentOrdersError && (
+        <ErrorAlert 
+          error={recentOrdersError} 
+          onRetry={() => refetchRecentOrders()}
+          message="Не вдалося завантажити останні замовлення"
+        />
+      )}
       
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
@@ -209,7 +247,7 @@ const Dashboard: React.FC = () => {
           pagination={false}
         />
       </Card>
-    </div>
+    </>
   );
 };
 

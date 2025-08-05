@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Layout } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, message, Layout, Modal } from 'antd';
+import { UserOutlined, LockOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useErrorHandler } from '../hooks/useErrorHandler';
 
 const { Content } = Layout;
 
@@ -10,6 +11,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showErrorModal } = useErrorHandler();
 
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
@@ -17,8 +19,21 @@ const Login: React.FC = () => {
       await login(values.username, values.password);
       message.success('Успішний вхід!');
       navigate('/dashboard');
-    } catch (error) {
-      message.error('Невірні дані для входу');
+    } catch (error: any) {
+      // Show detailed error modal
+      const errorDetails = {
+        response: {
+          status: error?.response?.status,
+          data: {
+            detail: error?.response?.status === 401 
+              ? 'Невірне ім\'я користувача або пароль. Перевірте правильність введених даних.'
+              : error?.response?.data?.detail || 'Не вдалося виконати вхід. Спробуйте пізніше.'
+          }
+        },
+        message: error?.message
+      };
+      
+      showErrorModal(errorDetails, 'Помилка входу');
     } finally {
       setLoading(false);
     }

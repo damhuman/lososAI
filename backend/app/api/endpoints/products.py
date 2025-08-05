@@ -39,6 +39,26 @@ async def get_products(
     return products
 
 
+@router.get("/featured", response_model=List[ProductSchema])
+async def get_featured_products(
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Get all featured products"""
+    query = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(
+            Product.is_active == True,
+            Product.is_featured == True
+        )
+        .order_by(Product.name)
+    )
+    
+    result = await session.execute(query)
+    products = result.scalars().all()
+    return products
+
+
 @router.get("/{product_id}", response_model=ProductSchema)
 async def get_product(
     product_id: str,

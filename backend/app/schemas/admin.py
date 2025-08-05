@@ -41,9 +41,11 @@ class CategoryUpdate(BaseModel):
 
 # Product schemas  
 class PackageInfo(BaseModel):
-    id: str
+    id: Optional[str] = None  # Make optional for backward compatibility
+    type: Optional[str] = None  # Alternative to id field
     weight: float
     unit: str
+    price: Optional[float] = None  # Allow price field from database
     available: bool
     note: Optional[str] = None
 
@@ -68,6 +70,38 @@ class ProductUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
     stock_quantity: Optional[float] = None
+
+# Admin Product Response Schema
+class ProductResponse(BaseModel):
+    id: str
+    category_id: str
+    name: str
+    description: Optional[str] = None
+    price_per_kg: float
+    image_url: Optional[str] = None
+    packages: List[PackageInfo]
+    is_active: bool
+    is_featured: bool
+    stock_quantity: Optional[float] = None
+    category: Optional['CategoryResponse'] = None
+    
+    class Config:
+        from_attributes = True
+
+# Forward reference for category
+class CategoryResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    icon: str
+    order: int = 0
+    is_active: bool = True
+    
+    class Config:
+        from_attributes = True
+
+# Update the ProductResponse to properly reference CategoryResponse
+ProductResponse.model_rebuild()
 
 # User schemas
 class UserResponse(BaseModel):
@@ -170,8 +204,8 @@ class DistrictResponse(BaseModel):
 # Promo code schemas
 class PromoCodeCreate(BaseModel):
     code: str
-    discount_percent: float = 0
-    discount_amount: float = 0
+    discount_percent: Optional[float] = None
+    discount_amount: Optional[float] = None
     is_active: bool = True
     usage_limit: Optional[int] = None
     is_gold_code: bool = False

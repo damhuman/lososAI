@@ -1,0 +1,221 @@
+/* Mobile-specific styles for admin panel */
+
+/* Improve touch targets */
+@media (max-width: 767px) {
+  /* Make buttons larger for better touch interaction */
+  .ant-btn {
+    min-height: 44px !important;
+    padding: 8px 16px !important;
+  }
+
+  .ant-btn-sm {
+    min-height: 36px !important;
+    padding: 6px 12px !important;
+  }
+
+  /* Improve table touch interaction */
+  .ant-table-tbody > tr > td {
+    padding: 16px 8px !important;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 12px 8px !important;
+    font-size: 14px !important;
+  }
+
+  /* Make form inputs more touch-friendly */
+  .ant-input,
+  .ant-input-number,
+  .ant-select-selector {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  .ant-select-selection-item {
+    line-height: 28px !important;
+  }
+
+  /* Improve modal interaction */
+  .ant-modal-content {
+    margin: 16px !important;
+    max-height: calc(100vh - 32px) !important;
+    overflow: auto !important;
+  }
+
+  .ant-modal-body {
+    max-height: calc(100vh - 120px) !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+
+  /* Improve drawer navigation */
+  .ant-drawer-body {
+    padding: 0 !important;
+  }
+
+  .ant-menu-item {
+    height: 48px !important;
+    line-height: 48px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .ant-menu-item-icon {
+    font-size: 18px !important;
+  }
+
+  /* Improve pagination on mobile */
+  .ant-pagination {
+    text-align: center !important;
+    margin-top: 16px !important;
+  }
+
+  .ant-pagination-item,
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 44px !important;
+    height: 44px !important;
+    line-height: 42px !important;
+    margin-right: 4px !important;
+  }
+
+  .ant-pagination-jump-prev,
+  .ant-pagination-jump-next {
+    min-width: 44px !important;
+    height: 44px !important;
+    line-height: 42px !important;
+  }
+
+  /* Improve form layout on mobile */
+  .ant-form-item {
+    margin-bottom: 16px !important;
+  }
+
+  .ant-form-item-label {
+    padding-bottom: 4px !important;
+  }
+
+  .ant-form-item-label > label {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Improve card layout */
+  .ant-card {
+    margin-bottom: 8px !important;
+  }
+
+  .ant-card-head {
+    padding: 0 12px !important;
+    min-height: 44px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* Improve switch interaction */
+  .ant-switch {
+    min-width: 44px !important;
+    height: 24px !important;
+  }
+
+  /* Improve upload area */
+  .ant-upload.ant-upload-select-picture-card {
+    width: 120px !important;
+    height: 120px !important;
+  }
+
+  /* Improve tag display */
+  .ant-tag {
+    margin-bottom: 4px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+
+  /* Improve popconfirm */
+  .ant-popover-inner {
+    padding: 12px !important;
+  }
+
+  .ant-popover-buttons {
+    margin-top: 12px !important;
+  }
+
+  .ant-popover-buttons .ant-btn {
+    margin-left: 8px !important;
+  }
+
+  /* Sticky header */
+  .ant-layout-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+  }
+
+  /* Improve space component */
+  .ant-space-item {
+    width: 100% !important;
+  }
+
+  /* Improve dropdown */
+  .ant-dropdown-menu-item {
+    padding: 12px 16px !important;
+    min-height: 44px !important;
+  }
+
+  /* Improve avatar and user info */
+  .ant-avatar {
+    margin-right: 8px !important;
+  }
+
+  /* Improve loading states */
+  .ant-spin-container {
+    min-height: 200px !important;
+  }
+
+  /* Improve empty states */
+  .ant-empty {
+    padding: 32px 16px !important;
+  }
+
+  /* Fix horizontal scroll issues */
+  .ant-table-wrapper {
+    overflow-x: auto !important;
+  }
+
+  /* Improve message positioning */
+  .ant-message {
+    top: 80px !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ant-btn {
+    min-height: 36px !important;
+  }
+
+  .ant-input,
+  .ant-input-number,
+  .ant-select-selector {
+    min-height: 36px !important;
+  }
+
+  .ant-modal-content {
+    margin: 24px !important;
+  }
+}
+
+/* Dark mode support for mobile */
+@media (prefers-color-scheme: dark) and (max-width: 767px) {
+  .ant-drawer-header {
+    background-color: #141414 !important;
+    border-bottom-color: #303030 !important;
+  }
+
+  .ant-drawer-body {
+    background-color: #141414 !important;
+  }
+}

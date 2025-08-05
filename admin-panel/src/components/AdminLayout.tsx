@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Button, theme } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Button, theme, Drawer } from 'antd';
 import {
   DashboardOutlined,
   AppstoreOutlined,
@@ -22,12 +22,28 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const {
     token: { colorBgContainer },
   } = theme.useToken();
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setCollapsed(true);
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   const menuItems = [
     {
@@ -64,6 +80,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key);
+    if (isMobile) {
+      setMobileDrawerVisible(false);
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    if (isMobile) {
+      setMobileDrawerVisible(!mobileDrawerVisible);
+    } else {
+      setCollapsed(!collapsed);
+    }
   };
 
   const handleLogout = async () => {
@@ -80,71 +107,117 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
   ];
 
+  const SideMenu = () => (
+    <>
+      <div className="demo-logo-vertical" style={{ 
+        height: 32, 
+        margin: 16, 
+        background: 'rgba(255, 255, 255, 0.3)',
+        borderRadius: 6,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: isMobile ? '12px' : '14px'
+      }}>
+        {collapsed && !isMobile ? 'SF' : 'Seafood Admin'}
+      </div>
+      <Menu
+        theme="dark"
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        items={menuItems}
+        onClick={handleMenuClick}
+        style={{
+          fontSize: isMobile ? '16px' : '14px'
+        }}
+      />
+    </>
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="demo-logo-vertical" style={{ 
-          height: 32, 
-          margin: 16, 
-          background: 'rgba(255, 255, 255, 0.3)',
-          borderRadius: 6,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 'bold'
-        }}>
-          {collapsed ? 'SF' : 'Seafood Admin'}
-        </div>
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <Sider trigger={null} collapsible collapsed={collapsed}>
+          <SideMenu />
+        </Sider>
+      )}
+
+      {/* Mobile Drawer */}
+      <Drawer
+        title="Seafood Admin"
+        placement="left"
+        closable={true}
+        onClose={() => setMobileDrawerVisible(false)}
+        open={isMobile && mobileDrawerVisible}
+        width={280}
+        bodyStyle={{ padding: 0, backgroundColor: '#001529' }}
+        headerStyle={{ backgroundColor: '#001529', color: 'white', borderBottom: '1px solid #303030' }}
+      >
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={handleMenuClick}
+          style={{ backgroundColor: 'transparent', fontSize: '16px' }}
         />
-      </Sider>
+      </Drawer>
+
       <Layout>
         <Header style={{ 
           padding: 0, 
           background: colorBgContainer,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleMobileMenu}
             style={{
-              fontSize: '16px',
-              width: 64,
-              height: 64,
+              fontSize: isMobile ? '18px' : '16px',
+              width: isMobile ? 48 : 64,
+              height: isMobile ? 48 : 64,
             }}
           />
-          <div style={{ marginRight: 24 }}>
+          <div style={{ marginRight: isMobile ? 8 : 24 }}>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 cursor: 'pointer',
-                padding: '0 16px'
+                padding: isMobile ? '0 8px' : '0 16px'
               }}>
-                <Avatar size="small" style={{ backgroundColor: '#1890ff', marginRight: 8 }}>
+                <Avatar 
+                  size={isMobile ? "small" : "default"} 
+                  style={{ 
+                    backgroundColor: '#1890ff', 
+                    marginRight: isMobile ? 4 : 8 
+                  }}
+                >
                   {user?.username?.charAt(0).toUpperCase()}
                 </Avatar>
-                <span>{user?.username}</span>
+                {!isMobile && <span>{user?.username}</span>}
               </div>
             </Dropdown>
           </div>
         </Header>
         <Content
           style={{
-            margin: '24px 16px',
-            padding: 24,
+            margin: isMobile ? '8px' : '24px 16px',
+            padding: isMobile ? 16 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: 8,
+            overflow: 'auto'
           }}
         >
           {children}

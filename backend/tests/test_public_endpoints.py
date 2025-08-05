@@ -216,29 +216,29 @@ class TestOrders:
     async def test_create_order_success(self, client: AsyncClient, test_session: AsyncSession, 
                                        sample_product, sample_district, telegram_headers):
         """Test creating a new order successfully."""
-        # Create user first
-        user = User(
-            telegram_id=123456789,
-            username="testuser",
-            first_name="Test",
-            last_name="User"
-        )
-        test_session.add(user)
-        await test_session.commit()
+        # User is already mocked via dependency injection
         
         order_data = {
+            "user_id": 123456789,
+            "user_name": "Test User",
             "items": [
                 {
                     "product_id": sample_product.id,
+                    "product_name": sample_product.name,
                     "package_id": "1kg",
-                    "quantity": 2
+                    "weight": 1.0,
+                    "unit": "кг",
+                    "quantity": 2,
+                    "price_per_unit": 100.0,
+                    "total_price": 200.0
                 }
             ],
-            "district_id": sample_district.id,
-            "delivery_address": "Test Address 123",
-            "phone_number": "+380123456789",
-            "delivery_time_slot": "10:00-12:00",
-            "comment": "Test order comment"
+            "delivery": {
+                "district": sample_district.name,
+                "time_slot": "morning",
+                "comment": "Test order comment"
+            },
+            "total": 200.0
         }
         
         response = await client.post("/api/v1/orders", json=order_data, headers=telegram_headers)
@@ -251,16 +251,25 @@ class TestOrders:
     async def test_create_order_invalid_product(self, client: AsyncClient, sample_district, telegram_headers):
         """Test creating order with invalid product."""
         order_data = {
+            "user_id": 123456789,
+            "user_name": "Test User",
             "items": [
                 {
                     "product_id": "nonexistent",
+                    "product_name": "Nonexistent Product",
                     "package_id": "1kg",
-                    "quantity": 1
+                    "weight": 1.0,
+                    "unit": "кг",
+                    "quantity": 1,
+                    "price_per_unit": 100.0,
+                    "total_price": 100.0
                 }
             ],
-            "district_id": sample_district.id,
-            "delivery_address": "Test Address",
-            "phone_number": "+380123456789"
+            "delivery": {
+                "district": sample_district.name,
+                "time_slot": "morning"
+            },
+            "total": 100.0
         }
         
         response = await client.post("/api/v1/orders", json=order_data, headers=telegram_headers)
@@ -269,16 +278,25 @@ class TestOrders:
     async def test_create_order_invalid_district(self, client: AsyncClient, sample_product, telegram_headers):
         """Test creating order with invalid district."""
         order_data = {
+            "user_id": 123456789,
+            "user_name": "Test User",
             "items": [
                 {
                     "product_id": sample_product.id,
+                    "product_name": sample_product.name,
                     "package_id": "1kg",
-                    "quantity": 1
+                    "weight": 1.0,
+                    "unit": "кг",
+                    "quantity": 1,
+                    "price_per_unit": 100.0,
+                    "total_price": 100.0
                 }
             ],
-            "district_id": 99999,
-            "delivery_address": "Test Address",
-            "phone_number": "+380123456789"
+            "delivery": {
+                "district": "Nonexistent District",
+                "time_slot": "morning"
+            },
+            "total": 100.0
         }
         
         response = await client.post("/api/v1/orders", json=order_data, headers=telegram_headers)
@@ -286,14 +304,14 @@ class TestOrders:
     
     async def test_get_user_orders(self, client: AsyncClient, sample_order, telegram_headers):
         """Test getting user's orders."""
-        response = await client.get("/api/v1/orders/my", headers=telegram_headers)
+        response = await client.get("/api/v1/orders", headers=telegram_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
         # Find our test order
         test_order = next((order for order in data if order["id"] == sample_order.id), None)
         assert test_order is not None
-        assert test_order["status"] == sample_order.status
+        assert test_order["status"] == sample_order.status.value
     
     async def test_get_order_by_id(self, client: AsyncClient, sample_order, telegram_headers):
         """Test getting a specific order by ID."""
@@ -301,7 +319,7 @@ class TestOrders:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == sample_order.id
-        assert data["status"] == sample_order.status
+        assert data["status"] == sample_order.status.value
         assert len(data["items"]) >= 1
 
 

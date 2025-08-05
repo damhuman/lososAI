@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, message } from 'antd';
 import ukUA from 'antd/locale/uk_UA';
 import AdminLayout from './components/AdminLayout';
 import Login from './pages/Login';
@@ -13,12 +13,27 @@ import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import './App.css';
+import './styles/mobile.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.detail || 
+                           error?.message || 
+                           'Помилка при завантаженні даних';
+        message.error(errorMessage);
+      },
+    },
+    mutations: {
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.detail || 
+                           error?.message || 
+                           'Помилка при виконанні операції';
+        message.error(errorMessage);
+      },
     },
   },
 });

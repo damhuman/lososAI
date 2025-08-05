@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   Button, 
@@ -22,12 +22,11 @@ import {
   EditOutlined, 
   DeleteOutlined, 
   UploadOutlined,
-  EyeOutlined,
   LoadingOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { categoriesAPI, productsAPI } from '../services/api';
-import { Product, Category, PackageInfo } from '../types';
+import { Product, PackageInfo } from '../types';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -38,13 +37,25 @@ const Products: React.FC = () => {
   const [form] = Form.useForm();
   const [imageUrl, setImageUrl] = useState<string>('');
   const [uploading, setUploading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: productsData, isLoading } = useQuery(
+  // Check if device is mobile
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  const { data: productsData, isLoading, error: productsError } = useQuery(
     'products', 
     () => productsAPI.getAll(1, 100)
   );
-  const { data: categories } = useQuery('categories', categoriesAPI.getAll);
+  const { data: categories, error: categoriesError } = useQuery('categories', categoriesAPI.getAll);
 
   const createMutation = useMutation(productsAPI.create, {
     onSuccess: () => {
@@ -150,7 +161,96 @@ const Products: React.FC = () => {
     }
   };
 
-  const columns = [
+  // Mobile columns - simplified view
+  const mobileColumns = [
+    {
+      title: 'Товар',
+      key: 'product',
+      render: (_: any, record: Product) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {record.image_url ? (
+            <Image
+              width={40}
+              height={40}
+              src={record.image_url}
+              style={{ objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+GYA4CPsgKSCzKcQLiPaThJCuxKDEhJmQhHaMQyDEEOvFwKiLKOlYJNdGU9rYY5z1uLRvXXg5VPNVvvF/uUd5Gg4GBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYHLa/mS1oHGm+cINmczMzMzMzMzMzMz"
+            />
+          ) : (
+            <div style={{ 
+              width: 40, 
+              height: 40, 
+              backgroundColor: '#f5f5f5', 
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              —
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 'bold', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.name}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: 4 }}>
+              <Tag color="blue">{record.category?.name}</Tag>
+              <span style={{ marginLeft: 8 }}>{record.price_per_kg} грн/кг</span>
+            </div>
+            <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {record.packages?.slice(0, 2).map((pkg, index) => (
+                <Tag key={index} color="green">
+                  {pkg.weight} {pkg.unit}
+                </Tag>
+              ))}
+              {(record.packages?.length || 0) > 2 && (
+                <Tag>+{(record.packages?.length || 0) - 2}</Tag>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Дії',
+      key: 'actions',
+      width: 100,
+      render: (_: any, record: Product) => (
+        <Space direction="vertical" size="small">
+          <Button
+            type="primary"
+            ghost
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            style={{ width: '100%' }}
+          >
+            Редагувати
+          </Button>
+          <Popconfirm
+            title="Видалити товар?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Так"
+            cancelText="Ні"
+          >
+            <Button
+              type="primary"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              style={{ width: '100%' }}
+            >
+              Видалити
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  // Desktop columns - full view
+  const desktopColumns = [
     {
       title: 'Зображення',
       dataIndex: 'image_url',
@@ -272,29 +372,39 @@ const Products: React.FC = () => {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: 24 
+        marginBottom: isMobile ? 16 : 24,
+        flexWrap: 'wrap',
+        gap: 12
       }}>
-        <h1>Товари</h1>
+        <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>Товари</h1>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
+          size={isMobile ? 'large' : 'middle'}
         >
-          Додати товар
+          {isMobile ? 'Додати' : 'Додати товар'}
         </Button>
       </div>
 
       <Table
-        columns={columns}
+        columns={isMobile ? mobileColumns : desktopColumns}
         dataSource={productsData?.items}
         rowKey="id"
         loading={isLoading}
         pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
+          pageSize: isMobile ? 5 : 10,
+          showSizeChanger: !isMobile,
+          showQuickJumper: !isMobile,
           total: productsData?.total,
+          size: isMobile ? 'small' : undefined,
+          showTotal: (total, range) => 
+            isMobile 
+              ? `${range[0]}-${range[1]} з ${total}`
+              : `${range[0]}-${range[1]} з ${total} товарів`,
         }}
+        scroll={{ x: isMobile ? 'max-content' : undefined }}
+        size={isMobile ? 'small' : 'middle'}
       />
 
       <Modal
@@ -308,7 +418,9 @@ const Products: React.FC = () => {
           setImageUrl('');
         }}
         confirmLoading={createMutation.isLoading || updateMutation.isLoading}
-        width={800}
+        width={isMobile ? '95vw' : 800}
+        style={isMobile ? { top: 20 } : undefined}
+        destroyOnClose
       >
         <Form
           form={form}
@@ -426,14 +538,24 @@ const Products: React.FC = () => {
                       </Button>
                     }
                   >
-                    <Space align="baseline" style={{ display: 'flex', marginBottom: 8, flexWrap: 'wrap' }}>
+                    <Space 
+                      align="baseline" 
+                      style={{ 
+                        display: 'flex', 
+                        marginBottom: 8, 
+                        flexWrap: 'wrap',
+                        width: '100%'
+                      }}
+                      direction={isMobile ? "vertical" : "horizontal"}
+                      size={isMobile ? "small" : "middle"}
+                    >
                       <Form.Item
                         {...restField}
                         name={[name, 'id']}
                         label="ID"
                         rules={[{ required: true, message: 'ID обов\'язковий!' }]}
                       >
-                        <Input placeholder="1kg" style={{ width: 100 }} />
+                        <Input placeholder="1kg" style={{ width: isMobile ? '100%' : 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -441,7 +563,7 @@ const Products: React.FC = () => {
                         label="Тип"
                         rules={[{ required: true, message: 'Тип обов\'язковий!' }]}
                       >
-                        <Input placeholder="1кг" style={{ width: 100 }} />
+                        <Input placeholder="1кг" style={{ width: isMobile ? '100%' : 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -449,7 +571,7 @@ const Products: React.FC = () => {
                         label="Вага"
                         rules={[{ required: true, message: 'Вага обов\'язкова!' }]}
                       >
-                        <InputNumber min={0} placeholder="1" style={{ width: 100 }} />
+                        <InputNumber min={0} placeholder="1" style={{ width: isMobile ? '100%' : 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}
@@ -457,7 +579,7 @@ const Products: React.FC = () => {
                         label="Одиниця"
                         rules={[{ required: true, message: 'Одиниця обов\'язкова!' }]}
                       >
-                        <Select style={{ width: 80 }}>
+                        <Select style={{ width: isMobile ? '100%' : 80 }}>
                           <Option value="г">г</Option>
                           <Option value="кг">кг</Option>
                           <Option value="шт">шт</Option>
@@ -470,7 +592,7 @@ const Products: React.FC = () => {
                         label="Ціна"
                         rules={[{ required: true, message: 'Ціна обов\'язкова!' }]}
                       >
-                        <InputNumber min={0} placeholder="0" style={{ width: 100 }} />
+                        <InputNumber min={0} placeholder="0" style={{ width: isMobile ? '100%' : 100 }} />
                       </Form.Item>
                       <Form.Item
                         {...restField}

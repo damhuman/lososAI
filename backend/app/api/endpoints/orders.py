@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_async_session, get_current_user
 from app.db.models.user import User
 from app.db.models.order import Order, OrderItem, OrderStatus, DeliveryTimeSlot
-from app.db.models.product import District, PromoCode
+from app.db.models.product import District, PromoCode, Product
 from app.schemas.order import OrderCreate, Order as OrderSchema, OrderSummary
 from app.services.messaging import messaging_service
 
@@ -141,8 +141,22 @@ async def create_order(
     session.add(order)
     await session.flush()  # Get order ID
     
-    # Create order items
+    # Validate products and create order items
     for item_data in order_data.items:
+        # Validate product exists
+        product_result = await session.execute(
+            select(Product).where(
+                Product.id == item_data.product_id,
+                Product.is_active == True
+            )
+        )
+        product = product_result.scalar_one_or_none()
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product {item_data.product_id} not found or inactive"
+            )
+        
         order_item = OrderItem(
             order_id=order.id,
             product_id=item_data.product_id,

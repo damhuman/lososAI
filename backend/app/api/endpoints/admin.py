@@ -5,6 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.exc import IntegrityError
 import secrets
 
 from app.api.deps import get_async_session
@@ -73,11 +74,15 @@ async def create_category(
     username: str = Depends(verify_basic_auth)
 ):
     """Create new category"""
-    db_category = Category(**category.dict())
-    session.add(db_category)
-    await session.commit()
-    await session.refresh(db_category)
-    return db_category
+    try:
+        db_category = Category(**category.dict())
+        session.add(db_category)
+        await session.commit()
+        await session.refresh(db_category)
+        return db_category
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Category with this ID already exists")
 
 @router.put("/categories/{category_id}", response_model=CategorySchema)
 async def update_category(
@@ -120,7 +125,7 @@ async def delete_category(
     return {"message": "Category deleted successfully"}
 
 # Products CRUD
-@router.get("/products", response_model=PaginatedResponse[ProductSchema])
+@router.get("/products", response_model=PaginatedResponse[ProductResponse])
 async def get_admin_products(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -176,7 +181,7 @@ async def get_product_stats(
         "active_products": active_products
     }
 
-@router.get("/products/{product_id}", response_model=ProductSchema)
+@router.get("/products/{product_id}", response_model=ProductResponse)
 async def get_admin_product(
     product_id: str,
     session: AsyncSession = Depends(get_async_session),
@@ -192,23 +197,27 @@ async def get_admin_product(
     
     return product
 
-@router.post("/products", response_model=ProductSchema)
+@router.post("/products", response_model=ProductResponse)
 async def create_product(
     product: ProductCreate,
     session: AsyncSession = Depends(get_async_session),
     username: str = Depends(verify_basic_auth)
 ):
     """Create new product"""
-    db_product = Product(**product.dict())
-    session.add(db_product)
-    await session.commit()
-    await session.refresh(db_product)
-    
-    # Load category
-    await session.refresh(db_product, ['category'])
-    return db_product
+    try:
+        db_product = Product(**product.dict())
+        session.add(db_product)
+        await session.commit()
+        await session.refresh(db_product)
+        
+        # Load category
+        await session.refresh(db_product, ['category'])
+        return db_product
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Product with this ID already exists or invalid category")
 
-@router.put("/products/{product_id}", response_model=ProductSchema)
+@router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: str,
     product: ProductUpdate,
@@ -313,6 +322,22 @@ async def get_user_stats(
         blocked=blocked
     )
 
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get user by ID"""
+    query = select(User).where(User.id == user_id)
+    result = await session.execute(query)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
+
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: int,
@@ -353,7 +378,13 @@ async def get_admin_orders(
     # Build filters
     filters = []
     if status:
-        filters.append(Order.status == status)
+        from app.db.models.order import OrderStatus
+        try:
+            status_enum = OrderStatus(status)
+            filters.append(Order.status == status_enum)
+        except ValueError:
+            # Invalid status, no results
+            filters.append(Order.id == -1)
     if order_id:
         filters.append(Order.order_id == order_id)
     if start_date:
@@ -450,7 +481,8 @@ async def get_order_stats(
     if filters:
         status_query = status_query.where(and_(*filters))
     status_result = await session.execute(status_query)
-    orders_by_status = dict(status_result.fetchall())
+    orders_by_status = {status.value if hasattr(status, 'value') else str(status): count 
+                       for status, count in status_result.fetchall()}
     
     return OrderStats(
         total_orders=total_orders,
@@ -458,53 +490,6 @@ async def get_order_stats(
         avg_order_value=avg_order_value,
         orders_by_status=orders_by_status
     )
-
-@router.get("/orders/{order_id}", response_model=OrderResponse)
-async def get_admin_order(
-    order_id: int,
-    session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
-):
-    """Get order by ID"""
-    query = (
-        select(Order)
-        .options(
-            selectinload(Order.items),
-            selectinload(Order.user),
-            selectinload(Order.district)
-        )
-        .where(Order.id == order_id)
-    )
-    result = await session.execute(query)
-    order = result.scalar_one_or_none()
-    
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    return order
-
-@router.put("/orders/{order_id}/status", response_model=OrderResponse)
-async def update_order_status(
-    order_id: int,
-    status_update: OrderStatusUpdate,
-    session: AsyncSession = Depends(get_async_session),
-    username: str = Depends(verify_basic_auth)
-):
-    """Update order status"""
-    query = select(Order).where(Order.id == order_id)
-    result = await session.execute(query)
-    order = result.scalar_one_or_none()
-    
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    order.status = status_update.status
-    order.updated_at = datetime.utcnow()
-    
-    await session.commit()
-    await session.refresh(order, ['items', 'user', 'district'])
-    return order
-
 
 @router.get("/orders/export")
 async def export_orders_report(
@@ -594,7 +579,7 @@ async def export_orders_report(
         filename = f"orders_report_{start_date}_{end_date}.xlsx"
         
         return StreamingResponse(
-            io.BytesIO(output.read()),
+            BytesIO(output.read()),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
@@ -603,6 +588,52 @@ async def export_orders_report(
         raise HTTPException(status_code=500, detail="Excel export not available")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@router.get("/orders/{order_id}", response_model=OrderResponse)
+async def get_admin_order(
+    order_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get order by ID"""
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.user),
+            selectinload(Order.district)
+        )
+        .where(Order.id == order_id)
+    )
+    result = await session.execute(query)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return order
+
+@router.put("/orders/{order_id}/status", response_model=OrderResponse)
+async def update_order_status(
+    order_id: int,
+    status_update: OrderStatusUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Update order status"""
+    query = select(Order).where(Order.id == order_id)
+    result = await session.execute(query)
+    order = result.scalar_one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order.status = status_update.status
+    order.updated_at = datetime.utcnow()
+    
+    await session.commit()
+    await session.refresh(order, ['items', 'user', 'district'])
+    return order
 
 # Districts CRUD
 @router.get("/districts", response_model=List[DistrictResponse])
@@ -615,6 +646,22 @@ async def get_admin_districts(
     result = await session.execute(query)
     districts = result.scalars().all()
     return districts
+
+@router.get("/districts/{district_id}", response_model=DistrictResponse)
+async def get_district_by_id(
+    district_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get district by ID"""
+    query = select(District).where(District.id == district_id)
+    result = await session.execute(query)
+    district = result.scalar_one_or_none()
+    
+    if not district:
+        raise HTTPException(status_code=404, detail="District not found")
+    
+    return district
 
 @router.post("/districts", response_model=DistrictResponse)
 async def create_district(
@@ -681,6 +728,22 @@ async def get_admin_promo_codes(
     promo_codes = result.scalars().all()
     return promo_codes
 
+@router.get("/promo-codes/{promo_code_id}", response_model=PromoCodeResponse)
+async def get_promo_code_by_id(
+    promo_code_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    username: str = Depends(verify_basic_auth)
+):
+    """Get promo code by ID"""
+    query = select(PromoCode).where(PromoCode.id == promo_code_id)
+    result = await session.execute(query)
+    promo_code = result.scalar_one_or_none()
+    
+    if not promo_code:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+    
+    return promo_code
+
 @router.post("/promo-codes", response_model=PromoCodeResponse)
 async def create_promo_code(
     promo_code: PromoCodeCreate,
@@ -688,11 +751,15 @@ async def create_promo_code(
     username: str = Depends(verify_basic_auth)
 ):
     """Create new promo code"""
-    db_promo_code = PromoCode(**promo_code.dict())
-    session.add(db_promo_code)
-    await session.commit()
-    await session.refresh(db_promo_code)
-    return db_promo_code
+    try:
+        db_promo_code = PromoCode(**promo_code.dict())
+        session.add(db_promo_code)
+        await session.commit()
+        await session.refresh(db_promo_code)
+        return db_promo_code
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail="Promo code with this code already exists")
 
 @router.put("/promo-codes/{promo_code_id}", response_model=PromoCodeResponse)
 async def update_promo_code(

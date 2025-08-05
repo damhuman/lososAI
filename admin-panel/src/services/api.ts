@@ -22,6 +22,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Add response error interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      localStorage.removeItem('admin_username');
+      localStorage.removeItem('admin_password');
+      window.location.href = '/admin/login';
+    }
+    
+    // Handle network errors
+    if (!error.response) {
+      error.message = 'Помилка мережі. Перевірте підключення до інтернету.';
+    }
+    
+    // Handle server errors
+    if (error.response?.status >= 500) {
+      error.message = 'Помилка сервера. Спробуйте пізніше.';
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authAPI = {
   login: async (username: string, password: string): Promise<AdminUser> => {
@@ -31,7 +56,7 @@ export const authAPI = {
     
     // Verify credentials by making a test request
     try {
-      const response = await api.get('/admin/verify');
+      await api.get('/admin/verify');
       return { username, token: btoa(`${username}:${password}`) };
     } catch (error) {
       // Clear stored credentials if login fails
