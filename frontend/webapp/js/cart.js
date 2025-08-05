@@ -396,8 +396,8 @@ class CartUIManager {
         
         // Create product image with fallback logic
         const getCartItemFallback = (packageName, weight, unit) => {
-            if (packageName && packageName.toLowerCase().includes('0.5') || packageName.includes('500')) return '/images/package-500g.svg';
-            if (packageName && packageName.toLowerCase().includes('1.0') || packageName.includes('1kg')) return '/images/package-1kg.svg';
+            if (packageName && (packageName.toLowerCase().includes('0.5') || packageName.toLowerCase().includes('500'))) return '/images/package-500g.svg';
+            if (packageName && (packageName.toLowerCase().includes('1.0') || packageName.toLowerCase().includes('1kg'))) return '/images/package-1kg.svg';
             if (weight && unit) {
                 const weightStr = `${weight}${unit}`;
                 if (weightStr.includes('0.5') || weightStr.includes('500')) return '/images/package-500g.svg';

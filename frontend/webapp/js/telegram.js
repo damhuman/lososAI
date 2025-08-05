@@ -143,14 +143,15 @@ class TelegramWebApp {
         console.log('Setting up back button...');
         
         if (!this.tg || !this.tg.BackButton) {
-            console.error('Telegram BackButton not available');
+            console.warn('Telegram BackButton not available in this version');
             return;
         }
         
         try {
-            // Simple direct approach
-            window.Telegram.WebApp.BackButton.onClick(function() {
-                console.log('>>> BACK BUTTON CLICKED <<<');
+            // Check if BackButton is supported
+            if (window.Telegram.WebApp.BackButton && typeof window.Telegram.WebApp.BackButton.onClick === 'function') {
+                window.Telegram.WebApp.BackButton.onClick(function() {
+                    console.log('>>> BACK BUTTON CLICKED <<<');
                 
                 // Simple fallback navigation
                 if (window.router && window.router.goBack) {
@@ -162,11 +163,14 @@ class TelegramWebApp {
                         window.router.navigateTo('categories');
                     }
                 }
-            });
-            
-            console.log('✅ Back button handler set up');
+                });
+                
+                console.log('✅ Back button handler set up');
+            } else {
+                console.warn('BackButton.onClick not supported in this WebApp version');
+            }
         } catch (error) {
-            console.error('❌ Error setting up back button:', error);
+            console.warn('BackButton not supported in this WebApp version:', error.message);
         }
     }
     
@@ -336,7 +340,18 @@ class TelegramWebApp {
     }
     
     showAlert(message) {
-        this.tg.showAlert(message);
+        try {
+            if (this.tg.showAlert) {
+                this.tg.showAlert(message);
+            } else {
+                // Fallback for older versions
+                console.warn('Telegram showAlert not supported, using console:', message);
+                alert(message);
+            }
+        } catch (error) {
+            console.warn('Telegram showAlert not supported:', error.message);
+            alert(message);
+        }
     }
     
     openLink(url) {
