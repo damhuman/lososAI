@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 from pydantic import BaseModel, field_validator
 
@@ -8,12 +8,18 @@ from app.db.models.order import OrderStatus, DeliveryTimeSlot
 class OrderItemCreate(BaseModel):
     product_id: str
     product_name: str
-    package_id: str
+    package_id: Union[str, int]  # Accept both string and int
     weight: float
     unit: str
     quantity: int
     price_per_unit: float
     total_price: float
+    
+    @field_validator('package_id')
+    @classmethod
+    def validate_package_id(cls, v):
+        # Convert to string if it's an integer
+        return str(v)
 
 
 class OrderItem(OrderItemCreate):
