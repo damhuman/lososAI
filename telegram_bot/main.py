@@ -14,10 +14,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Global bot instance for handlers
+bot = None
+
 
 async def main():
     """Main bot function"""
     # Initialize bot and dispatcher
+    global bot  # Make bot accessible from handlers
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     

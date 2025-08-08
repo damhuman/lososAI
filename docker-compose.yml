@@ -84,8 +84,9 @@ services:
       - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
     depends_on:
       - backend
-    volumes:
-      - ./telegram_bot:/app
+    # Remove volume mount for production-like behavior with dependencies
+    # volumes:
+    #   - ./telegram_bot:/app  
     command: python main.py
     restart: unless-stopped
 

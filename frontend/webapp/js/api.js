@@ -31,13 +31,31 @@ class ApiClient {
             const response = await fetch(url, config);
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const error = new Error(errorData.detail || `HTTP ${response.status}`);
+                let errorData = {};
+                let errorDetail = `HTTP ${response.status}`;
+                
+                try {
+                    errorData = await response.json();
+                    errorDetail = errorData.detail || errorData.message || `HTTP ${response.status}`;
+                } catch (parseError) {
+                    console.warn('Could not parse error response as JSON:', parseError);
+                    errorDetail = `HTTP ${response.status} - ${response.statusText}`;
+                }
+                
+                const error = new Error(errorDetail);
+                // Attach the full response data for detailed error handling
+                error.response = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: errorData
+                };
                 
                 // Report error to backend for admin notification
                 this.reportError('API_ERROR', `${endpoint}: ${error.message}`, {
                     status: response.status,
-                    url: url
+                    statusText: response.statusText,
+                    url: url,
+                    errorData: errorData
                 });
                 
                 throw error;
@@ -47,13 +65,22 @@ class ApiClient {
         } catch (error) {
             console.error(`API request failed: ${endpoint}`, error);
             
-            // Report network errors too
+            // For network errors or other fetch failures, ensure we have a proper message
             if (error.name === 'TypeError' || error.message.includes('fetch')) {
+                // Create a new error with a clearer message for network issues
+                const networkError = new Error(`Мережева помилка: ${error.message}`);
+                networkError.originalError = error;
+                networkError.isNetworkError = true;
+                
                 this.reportError('NETWORK_ERROR', `${endpoint}: ${error.message}`, {
-                    url: url
+                    url: url,
+                    originalError: error.message
                 });
+                
+                throw networkError;
             }
             
+            // Re-throw the error as-is if it's already formatted (from the !response.ok block above)
             throw error;
         }
     }

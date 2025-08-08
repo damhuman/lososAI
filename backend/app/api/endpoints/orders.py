@@ -177,15 +177,20 @@ async def create_order(
     await session.refresh(order, ["items", "district"])
     
     # Send confirmation messages
+    client_message_sent = False
+    admin_message_sent = False
+    
     try:
         print(f"📤 Sending order confirmation messages for order #{order.order_id}")
         
         # Send confirmation to client
         client_result = await messaging_service.send_order_confirmation_to_client(order)
+        client_message_sent = client_result
         print(f"📱 Client message result: {client_result}")
         
         # Send notification to admin
         admin_result = await messaging_service.send_order_notification_to_admin(order)
+        admin_message_sent = admin_result
         print(f"👨‍💼 Admin message result: {admin_result}")
         
     except Exception as e:
@@ -194,7 +199,36 @@ async def create_order(
         import traceback
         traceback.print_exc()
     
-    return order
+    # Create response with messaging status
+    response_data = {
+        "id": order.id,
+        "order_id": order.order_id,
+        "status": order.status.value,
+        "total_amount": order.total_amount,
+        "created_at": order.created_at.isoformat(),
+        "client_message_sent": client_message_sent,
+        "admin_message_sent": admin_message_sent,
+        "user_id": order.user_id,
+        "contact_name": order.contact_name,
+        "items": [
+            {
+                "product_name": item.product_name,
+                "weight": item.weight,
+                "unit": item.unit,
+                "quantity": item.quantity,
+                "total_price": item.total_price
+            }
+            for item in order.items
+        ],
+        "delivery": {
+            "district": order.district.name if order.district else None,
+            "time_slot": order.delivery_time_slot.value,
+            "date": order.delivery_date.isoformat(),
+            "comment": order.comment
+        }
+    }
+    
+    return response_data
 
 
 @router.get("/", response_model=List[OrderSummary])

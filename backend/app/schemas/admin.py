@@ -79,7 +79,7 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     price_per_kg: float
     image_url: Optional[str] = None
-    packages: List[PackageInfo]
+    packages: Optional[List[PackageInfo]] = []
     is_active: bool = True
     is_featured: bool = False
     stock_quantity: Optional[float] = None

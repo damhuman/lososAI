@@ -6,7 +6,7 @@ from pydantic import PostgresDsn, field_validator
 class Settings(BaseSettings):
     # Project
     PROJECT_NAME: str = "Seafood Store API"
-    VERSION: str = "1.0.0"
+    VERSION: str = "1.0.1"
     API_V1_STR: str = "/api/v1"
     
     # Security

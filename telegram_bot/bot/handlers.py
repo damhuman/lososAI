@@ -86,7 +86,15 @@ async def handle_web_app_data(message: Message):
         
         if backend_result:
             print(f"✅ Order submitted successfully to backend")
-            # Backend handles all messaging now
+            order_id = backend_result.get('order_id', 'невідомий')
+            print(f"📋 Order ID: {order_id}")
+            
+            # Backend handles client confirmation message automatically
+            # If backend messaging fails, send fallback confirmation
+            if not backend_result.get('client_message_sent', False):
+                print("⚠️ Backend didn't send client message, sending fallback")
+                await send_fallback_confirmation(message.from_user, order_data, order_id)
+                
         else:
             # Fallback message if backend submission fails
             await message.answer(
@@ -250,6 +258,75 @@ async def record_user_interaction(user, interaction_type: str, message_text: str
     except Exception as e:
         print(f"❌ Error recording user interaction: {e}")
         return None
+
+
+async def send_fallback_confirmation(user, order_data: dict, order_id: str):
+    """Send fallback order confirmation if backend messaging fails"""
+    try:
+        items = order_data.get("items", [])
+        delivery = order_data.get("delivery", {})
+        total = order_data.get("total", 0)
+        user_name = order_data.get("user_name", "Користувач")
+        
+        # Format items
+        items_text = ""
+        total_items = 0
+        for item in items:
+            items_text += f"• {item.get('product_name', 'Товар')} ({item.get('weight', '?')} {item.get('unit', 'шт')}) x{item.get('quantity', 1)} = {item.get('total_price', 0)} грн\n"
+            total_items += item.get('quantity', 1)
+        
+        # Format delivery info
+        district = delivery.get("district", "Не вказано")
+        time_slot_map = {
+            "morning": "🌅 Ранок (8:00-12:00)",
+            "afternoon": "☀️ День (12:00-16:00)",
+            "evening": "🌆 Вечір (16:00-20:00)"
+        }
+        time_slot = time_slot_map.get(delivery.get("time_slot"), "Не вказано")
+        comment = delivery.get("comment", "")
+        promo_code = order_data.get("promo_code")
+        
+        # Use the same simple format as in messaging service
+        message = f"""🎉 <b>Замовлення #{order_id} прийнято!</b>
+
+Ваше замовлення успішно оформлено. Менеджер зв'яжеться з вами найближчим часом для уточнення часу доставки.
+
+📋 <b>Деталі замовлення:</b>"""
+        
+        # Add simplified items list
+        for item in items:
+            message += f"\n• {item.get('product_name', 'Товар')} ({item.get('weight', '?')} {item.get('unit', 'шт')}) x{item.get('quantity', 1)}"
+        
+        message += f"""
+
+📦 <b>Кількість товарів:</b> {total_items} шт.
+💰 <b>Загальна сума:</b> {total} грн"""
+        
+        # Add promo code info if used
+        if promo_code:
+            message += f"\n🎫 <b>Промокод:</b> {promo_code}"
+        
+        message += f"\n\n📅 <i>Замовлення від {datetime.now().strftime('%d.%m.%Y %H:%M')}</i>"
+
+        # Send using bot instance from main module
+        try:
+            from main import bot
+            if bot:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=message,
+                    parse_mode="HTML"
+                )
+                print(f"✅ Fallback confirmation sent to user {user.id}")
+            else:
+                print(f"❌ Bot instance not available for fallback message")
+        except ImportError as e:
+            print(f"❌ Could not import bot instance: {e}")
+        except Exception as e:
+            print(f"❌ Error sending fallback message: {e}")
+        
+    except Exception as e:
+        print(f"❌ Error sending fallback confirmation: {e}")
 
 
 async def update_order_status(order_id: str, status: str):

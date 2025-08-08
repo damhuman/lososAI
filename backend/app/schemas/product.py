@@ -41,7 +41,7 @@ class ProductBase(BaseModel):
     description: Optional[str] = None
     price_per_kg: float
     image_url: Optional[str] = None
-    packages: List[PackageInfo]
+    packages: Optional[List[PackageInfo]] = []
 
 
 class ProductCreate(ProductBase):
