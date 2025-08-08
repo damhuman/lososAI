@@ -76,9 +76,14 @@ docker-compose exec backend python seed_data.py
 
 ### Testing
 
-**⚠️ IMPORTANT: This project follows Test-Driven Development (TDD) practices. Always run tests before making changes and ensure new features have test coverage.**
+**⚠️ CRITICAL: This project follows Test-Driven Development (TDD) practices. Always run tests before making changes and ensure new features have test coverage.**
+
+**🚨 PRE-COMMIT REQUIREMENT: ALWAYS run `./test.sh` before each commit to ensure all tests pass. Commits should not be made if tests are failing.**
 
 ```bash
+# REQUIRED: Run before every commit
+./test.sh
+
 # Run ALL tests (backend + frontend) with unified test runner
 ./test.sh
 
