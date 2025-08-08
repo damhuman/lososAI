@@ -35,7 +35,7 @@ openpyxl==3.1.2
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
-pytest-cov==4.1.0
+pytest-cov==6.2.1
 httpx==0.26.0
 factory-boy==3.3.0
 faker==22.0.0
