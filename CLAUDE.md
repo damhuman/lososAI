@@ -12,6 +12,40 @@ This is a complete Telegram Mini App for a seafood store with a multi-service ar
 - **Admin Panel**: React-based administrative interface with TypeScript
 - **Infrastructure**: Docker Compose orchestration with Nginx, Redis
 
+## 🔒 Security Requirements
+
+**⚠️ CRITICAL: Always check for secrets before commits!**
+
+### Pre-Commit Security Checklist
+```bash
+# 1. Check staged files for secrets
+git diff --staged | grep -i -E "(password|secret|key|token|api_key|private|credential)"
+
+# 2. Scan all files for hardcoded secrets  
+grep -r -I --exclude-dir=node_modules --exclude-dir=.git -E "(password|secret|key|token).*=.*['\"][^'\"]{10,}" .
+
+# 3. Check for environment files
+find . -name "*.env*" -not -path "./.git/*"
+
+# 4. Never commit these patterns:
+# - Real API keys, tokens, passwords
+# - Database credentials (except test/example)
+# - SSH keys or certificates
+# - .env files with real secrets
+```
+
+### Approved Test/Example Values
+- `test_token`, `test_secret`, `test_password` ✅
+- `admin123` (test credential being removed) ⚠️
+- Environment templates with placeholder values ✅
+- GitHub Actions with `secrets.GITHUB_TOKEN` ✅
+
+### Secret Management
+- **Production**: Use environment variables and secret management
+- **Testing**: Use dedicated test tokens and mock values
+- **CI/CD**: Store secrets in GitHub repository settings
+- **Local Development**: Use `.env` files (never commit real values)
+
 ## Development Commands
 
 ### Starting Services
@@ -41,13 +75,47 @@ docker-compose exec backend python seed_data.py
 ```
 
 ### Testing
+
+**⚠️ IMPORTANT: This project follows Test-Driven Development (TDD) practices. Always run tests before making changes and ensure new features have test coverage.**
+
 ```bash
-# Run backend tests
+# Run ALL tests (backend + frontend) with unified test runner
+./test.sh
+
+# Run only backend tests
+./test.sh --backend-only
 docker-compose exec backend pytest
 
-# Run tests with coverage
+# Run only frontend tests  
+./test.sh --frontend-only
+
+# Run with coverage reports
+./test.sh --coverage
 docker-compose exec backend pytest --cov=app tests/
+
+# Frontend tests (from frontend/webapp/)
+npm test
+npm run test:coverage
 ```
+
+#### Test Organization
+- **Backend**: `backend/tests/` - pytest with async support (85/98 tests passing)
+- **Frontend**: `frontend/webapp/__tests__/` - Jest with Telegram WebApp mocks (21/23 tests passing)
+- **Integration**: End-to-end order flow and API tests
+- **Coverage**: HTML reports generated in `backend/htmlcov/` and `frontend/webapp/coverage/`
+
+#### TDD Workflow
+1. **Red**: Write failing test for new feature
+2. **Green**: Implement minimal code to pass test
+3. **Refactor**: Clean up code while keeping tests green
+4. **Repeat**: Continue cycle for each feature addition
+
+#### GitHub Actions CI/CD
+- **Continuous Integration**: Automated tests on every push/PR
+- **Test Suite**: Backend (pytest) + Frontend (Jest) + Integration tests
+- **Code Quality**: Formatting, linting, security scanning
+- **Dependencies**: Automated updates via Dependabot
+- **Deployment**: Automated deployment pipeline for releases
 
 ### Development Workflow
 ```bash
