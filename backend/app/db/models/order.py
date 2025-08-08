@@ -8,6 +8,11 @@ from app.db.session import Base
 
 class OrderStatus(enum.Enum):
     PENDING = "pending"
+    VERIFICATION = "verification"      # Manager is verifying weights
+    WEIGHING = "weighing"             # Manager is weighing items  
+    PRICE_CALCULATED = "price_calculated"  # System calculated new price
+    AUTO_CONFIRMED = "auto_confirmed"  # Auto-confirmed (< threshold)
+    MANUAL_CONFIRM = "manual_confirm"  # Requires manual confirmation (> threshold)
     CONFIRMED = "confirmed"
     PREPARING = "preparing"
     DELIVERING = "delivering"
@@ -33,6 +38,14 @@ class Order(Base):
     total_amount = Column(Float, nullable=False)
     promo_code_used = Column(String, nullable=True)
     discount_amount = Column(Float, default=0)
+    
+    # Verification details (for enhanced admin flow)
+    expected_total = Column(Float, nullable=True)  # Original expected total
+    actual_total = Column(Float, nullable=True)    # Total after verification
+    price_variance_percent = Column(Float, nullable=True)  # Calculated variance %
+    auto_confirmed = Column(String, nullable=True)  # "yes" if auto-confirmed
+    verified_at = Column(DateTime(timezone=True), nullable=True)  # When verification completed
+    verified_by = Column(String, nullable=True)  # Manager who verified
     
     # Delivery information
     district_id = Column(Integer, ForeignKey("districts.id"), nullable=False)
@@ -65,14 +78,22 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(String, ForeignKey("products.id"), nullable=False)
     
-    # Item details
+    # Item details (expected/ordered)
     product_name = Column(String, nullable=False)  # Cached at order time
     package_id = Column(String, nullable=False)    # e.g., "1kg"
-    weight = Column(Float, nullable=False)         # Actual weight
+    weight = Column(Float, nullable=False)         # Expected weight
     unit = Column(String, nullable=False)          # e.g., "кг", "пласт"
-    quantity = Column(Integer, nullable=False)
+    quantity = Column(Integer, nullable=False)     # Expected quantity
     price_per_unit = Column(Float, nullable=False) # Price at order time
-    total_price = Column(Float, nullable=False)
+    total_price = Column(Float, nullable=False)    # Expected total price
+    
+    # Verification details (actual measurements)
+    actual_weight = Column(Float, nullable=True)   # Manager-verified weight
+    actual_quantity = Column(Integer, nullable=True)  # Manager-verified quantity
+    actual_price_per_unit = Column(Float, nullable=True)  # Recalculated price per unit
+    actual_total_price = Column(Float, nullable=True)  # Recalculated total
+    weight_variance_percent = Column(Float, nullable=True)  # Weight difference %
+    price_variance_percent = Column(Float, nullable=True)   # Price difference %
     
     # Relationships
     order = relationship("Order", back_populates="items")

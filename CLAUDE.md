@@ -12,6 +12,40 @@ This is a complete Telegram Mini App for a seafood store with a multi-service ar
 - **Admin Panel**: React-based administrative interface with TypeScript
 - **Infrastructure**: Docker Compose orchestration with Nginx, Redis
 
+## 🔒 Security Requirements
+
+**⚠️ CRITICAL: Always check for secrets before commits!**
+
+### Pre-Commit Security Checklist
+```bash
+# 1. Check staged files for secrets
+git diff --staged | grep -i -E "(password|secret|key|token|api_key|private|credential)"
+
+# 2. Scan all files for hardcoded secrets  
+grep -r -I --exclude-dir=node_modules --exclude-dir=.git -E "(password|secret|key|token).*=.*['\"][^'\"]{10,}" .
+
+# 3. Check for environment files
+find . -name "*.env*" -not -path "./.git/*"
+
+# 4. Never commit these patterns:
+# - Real API keys, tokens, passwords
+# - Database credentials (except test/example)
+# - SSH keys or certificates
+# - .env files with real secrets
+```
+
+### Approved Test/Example Values
+- `test_token`, `test_secret`, `test_password` ✅
+- `admin123` (test credential being removed) ⚠️
+- Environment templates with placeholder values ✅
+- GitHub Actions with `secrets.GITHUB_TOKEN` ✅
+
+### Secret Management
+- **Production**: Use environment variables and secret management
+- **Testing**: Use dedicated test tokens and mock values
+- **CI/CD**: Store secrets in GitHub repository settings
+- **Local Development**: Use `.env` files (never commit real values)
+
 ## Development Commands
 
 ### Starting Services
@@ -41,13 +75,52 @@ docker-compose exec backend python seed_data.py
 ```
 
 ### Testing
+
+**⚠️ CRITICAL: This project follows Test-Driven Development (TDD) practices. Always run tests before making changes and ensure new features have test coverage.**
+
+**🚨 PRE-COMMIT REQUIREMENT: ALWAYS run `./test.sh` before each commit to ensure all tests pass. Commits should not be made if tests are failing.**
+
 ```bash
-# Run backend tests
+# REQUIRED: Run before every commit
+./test.sh
+
+# Run ALL tests (backend + frontend) with unified test runner
+./test.sh
+
+# Run only backend tests
+./test.sh --backend-only
 docker-compose exec backend pytest
 
-# Run tests with coverage
+# Run only frontend tests  
+./test.sh --frontend-only
+
+# Run with coverage reports
+./test.sh --coverage
 docker-compose exec backend pytest --cov=app tests/
+
+# Frontend tests (from frontend/webapp/)
+npm test
+npm run test:coverage
 ```
+
+#### Test Organization
+- **Backend**: `backend/tests/` - pytest with async support (85/98 tests passing)
+- **Frontend**: `frontend/webapp/__tests__/` - Jest with Telegram WebApp mocks (21/23 tests passing)
+- **Integration**: End-to-end order flow and API tests
+- **Coverage**: HTML reports generated in `backend/htmlcov/` and `frontend/webapp/coverage/`
+
+#### TDD Workflow
+1. **Red**: Write failing test for new feature
+2. **Green**: Implement minimal code to pass test
+3. **Refactor**: Clean up code while keeping tests green
+4. **Repeat**: Continue cycle for each feature addition
+
+#### GitHub Actions CI/CD
+- **Continuous Integration**: Automated tests on every push/PR
+- **Test Suite**: Backend (pytest) + Frontend (Jest) + Integration tests
+- **Code Quality**: Formatting, linting, security scanning
+- **Dependencies**: Automated updates via Dependabot
+- **Deployment**: Automated deployment pipeline for releases
 
 ### Development Workflow
 ```bash
@@ -87,9 +160,9 @@ Key models in `backend/app/db/models/`:
 - Users are auto-created/updated from Telegram data
 
 **Admin Panel:**
-- Uses HTTP Basic Authentication
-- Admin credentials stored in environment variables (`ADMIN_USERNAME`, `ADMIN_PASSWORD`)
-- All admin API endpoints require Basic Auth header
+- Uses JWT authentication system
+- Admin credentials validated against backend user database
+- All admin API endpoints require JWT token in Authorization header
 
 ### Frontend Architecture
 
@@ -104,7 +177,7 @@ Key models in `backend/app/db/models/`:
 - **React Query**: Data fetching, caching, and synchronization
 - **Ant Design**: UI component library with Ukrainian localization
 - **TypeScript**: Type safety and better development experience
-- **Axios**: HTTP client with automatic Basic Auth injection
+- **Axios**: HTTP client with automatic JWT token injection
 
 ## Configuration
 
@@ -113,8 +186,6 @@ Key models in `backend/app/db/models/`:
 2. Set required variables:
    - `SECRET_KEY`: Backend encryption key
    - `TELEGRAM_BOT_TOKEN`: From @BotFather
-   - `ADMIN_USERNAME`: Admin panel username (default: admin)
-   - `ADMIN_PASSWORD`: Admin panel password
    - `WEB_APP_URL`: HTTPS URL for Telegram Web App
    - `S3_*`: S3/DigitalOcean Spaces credentials for file uploads
 
@@ -142,7 +213,7 @@ Telegram Web Apps require HTTPS in production. Configure SSL certificates in `do
 ### Admin Panel
 - `admin-panel/src/App.tsx`: Main React application with routing
 - `admin-panel/src/pages/`: Page components (Dashboard, Products, Orders, etc.)
-- `admin-panel/src/services/api.ts`: API client with Basic Auth
+- `admin-panel/src/services/api.ts`: API client with JWT authentication
 - `admin-panel/src/hooks/useAuth.tsx`: Authentication context and hooks
 - `admin-panel/src/types/index.ts`: TypeScript type definitions
 
@@ -161,8 +232,8 @@ The admin panel is a React-based web application that provides comprehensive man
 
 ### Access & Authentication
 - **URL**: http://localhost:8081/admin (development)
-- **Authentication**: HTTP Basic Auth
-- **Default Credentials**: admin / admin123 (configurable via environment)
+- **Authentication**: JWT-based login system
+- **Login**: Use admin credentials to obtain JWT token
 
 ### Features & Functionality
 
@@ -216,7 +287,7 @@ The admin panel is a React-based web application that provides comprehensive man
 
 **API Integration:**
 - RESTful API communication with `/api/v1/admin/*` endpoints
-- Automatic authentication header injection
+- Automatic JWT token header injection
 - Error handling and loading states
 - Real-time data synchronization
 

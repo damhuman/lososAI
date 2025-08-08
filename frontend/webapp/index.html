@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seafood Store</title>
-    <link rel="stylesheet" href="css/styles.css?v=14">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/styles.css?v=17">
+    <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
 </head>
 <body>
     <!-- Cart icon - visible on all screens except loading -->
@@ -96,36 +96,47 @@
             </div>
             
             <div class="product-info">
-                <h2 id="product-name"></h2>
+                <h3 id="product-name"></h3>
                 <p id="product-description"></p>
-                <div class="price-info">
+                <div class="price-info" style="display: none;">
+                    <span class="price-label">Ціна:</span>
                     <span id="product-price"></span>
                 </div>
             </div>
             
-            <div class="product-options">
+            <div class="product-selection-card">
                 <div class="package-options">
-                    <h4>Фасування:</h4>
-                    <div id="package-list" class="radio-group">
+                    <h4>Оберіть фасування:</h4>
+                    <div id="package-list" class="package-grid">
                         <!-- Package options will be loaded here -->
                     </div>
                 </div>
                 
-                <div class="quantity-controls">
-                    <h4>Кількість:</h4>
-                    <div class="quantity-selector">
-                        <button type="button" class="quantity-btn" id="quantity-minus">-</button>
-                        <input type="number" id="quantity-input" value="1" min="1" max="10">
-                        <button type="button" class="quantity-btn" id="quantity-plus">+</button>
+                <div class="quantity-row">
+                    <span class="quantity-label">Кількість:</span>
+                    <div class="quantity-selector-inline">
+                        <button type="button" class="quantity-btn-inline" id="quantity-minus">−</button>
+                        <span id="quantity-display">1</span>
+                        <button type="button" class="quantity-btn-inline" id="quantity-plus">+</button>
+                        <input type="hidden" id="quantity-input" value="1" min="1" max="10">
                     </div>
                 </div>
-                
-                <div class="total-price">
-                    <span>Загальна вартість: <strong id="total-price">0 грн</strong></span>
+            </div>
+            
+            <!-- Sticky bottom bar for mobile -->
+            <div class="product-bottom-bar">
+                <div class="total-price-compact">
+                    <span class="price-label-small">Сума:</span>
+                    <strong id="total-price">0 грн</strong>
                 </div>
                 
-                <button id="add-to-cart-btn" class="btn btn-primary">
-                    Додати до кошика
+                <button id="add-to-cart-btn" class="btn btn-primary btn-add-cart">
+                    <svg class="cart-icon-btn" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" fill="currentColor"/>
+                        <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" fill="currentColor"/>
+                        <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>В кошик</span>
                 </button>
             </div>
         </div>
@@ -170,6 +181,99 @@
                 </div>
             </div>
         </div>
+
+        <!-- Order Review screen -->
+        <div id="order-review" class="screen">
+            <div class="header">
+                <img src="images/logo.png" alt="Seafood Store Logo" class="header-logo-small">
+                <h2>📋 Перевірка замовлення</h2>
+            </div>
+            
+            <div class="order-review-container">
+                <!-- Combined order items and total section -->
+                <div class="review-section">
+                    <h3 class="section-title">🛒 Ваше замовлення</h3>
+                    <div id="review-items" class="review-items-list">
+                        <!-- Items will be loaded here -->
+                    </div>
+                    <!-- Price summary in same block -->
+                    <div class="review-price-summary">
+                        <div class="price-row">
+                            <span class="price-label">Сума товарів:</span>
+                            <span id="review-subtotal" class="price-value"></span>
+                        </div>
+                        <div class="price-row" id="review-promo-row" style="display: none;">
+                            <span class="price-label">Знижка:</span>
+                            <span id="review-discount" class="price-value discount"></span>
+                        </div>
+                        <div class="price-row total">
+                            <span class="price-label">До сплати:</span>
+                            <span id="review-total" class="price-value total"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delivery details section -->
+                <div class="review-section">
+                    <h3 class="section-title">🚚 Доставка</h3>
+                    <div class="review-info-card">
+                        <div class="info-row">
+                            <span class="info-label">Район:</span>
+                            <span id="review-district" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Час доставки:</span>
+                            <span id="review-time-slot" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Дата доставки:</span>
+                            <span id="review-delivery-date" class="info-value"></span>
+                        </div>
+                        <div class="info-row" id="review-comment-row" style="display: none;">
+                            <span class="info-label">Коментар:</span>
+                            <span id="review-comment" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Important notice -->
+                <div class="review-section">
+                    <div class="confirmation-notice-card">
+                        <div class="notice-icon">📱</div>
+                        <div class="notice-text">
+                            <h4>Що відбудеться після підтвердження?</h4>
+                            <ul>
+                                <li>Ви отримаєте повідомлення в Telegram з деталями замовлення</li>
+                                <li>Менеджер зв'яжеться з вами для уточнення часу доставки</li>
+                                <li>Оплата при отриманні товару</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action buttons -->
+                <div class="review-actions">
+                    <button id="edit-order-btn" class="btn btn-secondary">
+                        <span class="btn-icon">✏️</span>
+                        <span>Назад до редагування</span>
+                    </button>
+                    <button id="confirm-order-btn" class="btn btn-primary btn-large btn-confirm">
+                        <span class="btn-icon">✅</span>
+                        <span>Підтвердити замовлення</span>
+                    </button>
+                </div>
+                
+                <!-- Loading overlay -->
+                <div id="order-loading" class="order-loading-overlay" style="display: none;">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Обробка замовлення...</p>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
 
         <!-- Checkout screen -->
         <div id="checkout" class="screen">
@@ -288,10 +392,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/telegram.js?v=1722779303"></script>
-    <script src="js/api.js?v=1722779303"></script>
-    <script src="js/cart.js?v=1722779306"></script>
-    <script src="js/router.js?v=1722779303"></script>
-    <script src="js/app.js?v=1722779303"></script>
+    <script src="js/telegram.js?v=1754422400"></script>
+    <script src="js/api.js?v=1754422400"></script>
+    <script src="js/cart.js?v=1754422400"></script>
+    <script src="js/router.js?v=1754422400"></script>
+    <script src="js/app.js?v=1754422400"></script>
 </body>
 </html>

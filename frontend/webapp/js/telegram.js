@@ -5,47 +5,165 @@ class TelegramWebApp {
         console.log('window.Telegram:', window.Telegram);
         console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
         
-        this.tg = window.Telegram?.WebApp;
+        this.tg = null;
         this.user = null;
         this.initData = '';
+        this.isInitialized = false;
+        this.initPromise = null;
         
-        if (!this.tg) {
-            console.error('Telegram WebApp is not available');
-            console.error('Available Telegram object:', window.Telegram);
-            return;
+        // Initialize with better error handling
+        this.initPromise = this.safeInit();
+    }
+    
+    async safeInit() {
+        try {
+            // Wait for Telegram object to be available
+            await this.waitForTelegram();
+            
+            this.tg = window.Telegram.WebApp;
+            
+            if (!this.tg) {
+                throw new Error('Telegram WebApp object is not available');
+            }
+            
+            console.log('Telegram WebApp object:', this.tg);
+            console.log('Telegram WebApp version:', this.tg.version);
+            console.log('Platform:', this.tg.platform);
+            
+            // Check if we're actually running in Telegram
+            if (!this.tg.initData && !this.tg.initDataUnsafe) {
+                console.warn('Running outside Telegram environment - limited functionality');
+                // Still initialize for testing purposes
+            }
+            
+            this.init();
+            this.isInitialized = true;
+            console.log('Telegram WebApp successfully initialized');
+            return true;
+            
+        } catch (error) {
+            console.error('Failed to initialize Telegram WebApp:', error);
+            this.handleInitializationError(error);
+            return false;
         }
+    }
+    
+    waitForTelegram(maxAttempts = 50, interval = 100) {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            
+            const checkTelegram = () => {
+                attempts++;
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    console.log(`Telegram WebApp found after ${attempts} attempts`);
+                    resolve();
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error('Telegram WebApp not found after maximum attempts'));
+                } else {
+                    setTimeout(checkTelegram, interval);
+                }
+            };
+            
+            checkTelegram();
+        });
+    }
+    
+    handleInitializationError(error) {
+        console.error('Telegram WebApp initialization failed:', error);
         
-        console.log('Telegram WebApp object:', this.tg);
-        console.log('BackButton object:', this.tg.BackButton);
+        // Create a mock object for development/testing
+        this.tg = {
+            ready: () => console.log('Mock: ready() called'),
+            expand: () => console.log('Mock: expand() called'),
+            enableClosingConfirmation: () => console.log('Mock: enableClosingConfirmation() called'),
+            MainButton: {
+                setText: (text) => console.log('Mock MainButton.setText:', text),
+                show: () => console.log('Mock MainButton.show()'),
+                hide: () => console.log('Mock MainButton.hide()'),
+                enable: () => console.log('Mock MainButton.enable()'),
+                disable: () => console.log('Mock MainButton.disable()'),
+                onClick: (callback) => console.log('Mock MainButton.onClick registered'),
+                setParams: (params) => console.log('Mock MainButton.setParams:', params)
+            },
+            BackButton: {
+                show: () => console.log('Mock BackButton.show()'),
+                hide: () => console.log('Mock BackButton.hide()'),
+                onClick: (callback) => console.log('Mock BackButton.onClick registered')
+            },
+            themeParams: {},
+            initData: '',
+            initDataUnsafe: {},
+            version: '7.0',
+            platform: 'unknown',
+            HapticFeedback: {
+                impactOccurred: (type) => console.log('Mock haptic:', type),
+                notificationOccurred: (type) => console.log('Mock notification:', type)
+            },
+            showPopup: (params) => {
+                console.log('Mock showPopup:', params);
+                alert(`${params.title}\n\n${params.message}`);
+            },
+            showAlert: (message) => {
+                console.log('Mock showAlert:', message);
+                alert(message);
+            },
+            sendData: (data) => console.log('Mock sendData:', data),
+            onEvent: (event, callback) => console.log('Mock onEvent:', event),
+            close: () => console.log('Mock close()'),
+            openLink: (url) => console.log('Mock openLink:', url)
+        };
         
-        this.init();
+        // Display user-friendly error message
+        setTimeout(() => {
+            const loadingText = document.querySelector('#loading p');
+            if (loadingText && loadingText.textContent === 'Завантаження...') {
+                loadingText.textContent = 'Помилка ініціалізації Telegram. Спробуйте оновити додаток.';
+                loadingText.style.color = '#ff6b6b';
+            }
+        }, 2000);
     }
     
     init() {
-        // Signal that the app is ready
-        this.tg.ready();
-        
-        // Expand the app to full height
-        this.tg.expand();
-        
-        // Apply Telegram theme
-        this.applyTheme();
-        
-        // Get user data and init data
-        this.user = this.tg.initDataUnsafe?.user;
-        this.initData = this.tg.initData;
-        
-        // Set up main button first (doesn't depend on router)
-        this.setupMainButton();
-        
-        // Set up back button - will retry if router not ready
-        this.setupBackButtonWhenReady();
-        
-        // Enable closing confirmation
-        this.tg.enableClosingConfirmation();
-        
-        console.log('Telegram WebApp initialized');
-        console.log('User:', this.user);
+        try {
+            console.log('Starting Telegram WebApp initialization...');
+            
+            // Signal that the app is ready
+            this.tg.ready();
+            console.log('✅ Telegram WebApp ready() called');
+            
+            // Expand the app to full height
+            this.tg.expand();
+            console.log('✅ Telegram WebApp expand() called');
+            
+            // Apply Telegram theme
+            this.applyTheme();
+            console.log('✅ Theme applied');
+            
+            // Get user data and init data
+            this.user = this.tg.initDataUnsafe?.user;
+            this.initData = this.tg.initData;
+            console.log('✅ User data retrieved:', this.user);
+            console.log('✅ Init data length:', this.initData?.length || 0);
+            
+            // Set up main button first (doesn't depend on router)
+            this.setupMainButton();
+            console.log('✅ Main button configured');
+            
+            // Set up back button - will retry if router not ready
+            this.setupBackButtonWhenReady();
+            console.log('✅ Back button setup scheduled');
+            
+            // Enable closing confirmation
+            this.tg.enableClosingConfirmation();
+            console.log('✅ Closing confirmation enabled');
+            
+            console.log('✅ Telegram WebApp initialization completed successfully');
+            
+        } catch (error) {
+            console.error('❌ Error during Telegram WebApp initialization:', error);
+            throw error;
+        }
     }
     
     applyTheme() {
@@ -149,8 +267,8 @@ class TelegramWebApp {
         
         try {
             // Check if BackButton is supported
-            if (window.Telegram.WebApp.BackButton && typeof window.Telegram.WebApp.BackButton.onClick === 'function') {
-                window.Telegram.WebApp.BackButton.onClick(function() {
+            if (this.tg.BackButton && typeof this.tg.BackButton.onClick === 'function') {
+                this.tg.BackButton.onClick(function() {
                     console.log('>>> BACK BUTTON CLICKED <<<');
                 
                 // Simple fallback navigation
@@ -189,7 +307,17 @@ class TelegramWebApp {
             if (currentScreen === 'cart') {
                 window.router?.navigateTo('checkout');
             } else if (currentScreen === 'checkout') {
-                this.submitOrder();
+                // Trigger form submission which will navigate to order confirmation
+                const checkoutForm = document.getElementById('checkout-form');
+                if (checkoutForm) {
+                    checkoutForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                }
+            } else if (currentScreen === 'order-review') {
+                // Submit order directly
+                const confirmBtn = document.getElementById('confirm-order-btn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
             }
         });
         
@@ -234,19 +362,27 @@ class TelegramWebApp {
     
     showBackButton() {
         try {
-            console.log('Showing back button');
-            this.tg.BackButton.show();
+            if (this.tg.BackButton && typeof this.tg.BackButton.show === 'function') {
+                console.log('Showing back button');
+                this.tg.BackButton.show();
+            } else {
+                console.warn('BackButton.show not supported in this WebApp version');
+            }
         } catch (error) {
-            console.error('Error showing back button:', error);
+            console.warn('Error showing back button:', error.message);
         }
     }
     
     hideBackButton() {
         try {
-            console.log('Hiding back button');
-            this.tg.BackButton.hide();
+            if (this.tg.BackButton && typeof this.tg.BackButton.hide === 'function') {
+                console.log('Hiding back button');
+                this.tg.BackButton.hide();
+            } else {
+                console.warn('BackButton.hide not supported in this WebApp version');
+            }
         } catch (error) {
-            console.error('Error hiding back button:', error);
+            console.warn('Error hiding back button:', error.message);
         }
     }
     
@@ -294,8 +430,8 @@ class TelegramWebApp {
             window.cart.clear();
         }
         
-        // Set order confirmation flag
-        sessionStorage.setItem('orderConfirmed', 'true');
+        // Don't set orderConfirmed flag here - it should only be set after actual backend submission
+        // The flag will be set in app.js after successful API call
         
         // Navigate to main page (categories)
         setTimeout(() => {
@@ -332,11 +468,22 @@ class TelegramWebApp {
     }
     
     showPopup(title, message, buttons = [{ type: 'close' }]) {
-        return this.tg.showPopup({
-            title: title,
-            message: message,
-            buttons: buttons
-        });
+        try {
+            if (this.tg.showPopup) {
+                return this.tg.showPopup({
+                    title: title,
+                    message: message,
+                    buttons: buttons
+                });
+            } else {
+                // Fallback for older Telegram WebApp versions
+                console.warn('Telegram showPopup not supported, using alert:', title, message);
+                alert(`${title}\n\n${message}`);
+            }
+        } catch (error) {
+            console.warn('Telegram showPopup not supported:', error.message);
+            alert(`${title}\n\n${message}`);
+        }
     }
     
     showAlert(message) {
@@ -368,6 +515,22 @@ class TelegramWebApp {
     
     getInitData() {
         return this.initData;
+    }
+    
+    isReady() {
+        return this.isInitialized && this.tg;
+    }
+    
+    getDebugInfo() {
+        return {
+            isInitialized: this.isInitialized,
+            hasTelegram: !!window.Telegram,
+            hasWebApp: !!window.Telegram?.WebApp,
+            hasUser: !!this.user,
+            hasInitData: !!this.initData,
+            version: this.tg?.version,
+            platform: this.tg?.platform
+        };
     }
 }
 

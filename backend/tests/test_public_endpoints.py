@@ -2,6 +2,7 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, patch
 
 from app.db.models.product import Category, Product, District, PromoCode
 from app.db.models.user import User
@@ -217,6 +218,7 @@ class TestOrders:
                                        sample_product, sample_district, telegram_headers):
         """Test creating a new order successfully."""
         # User is already mocked via dependency injection
+        # Messaging service will skip real API calls in test mode (settings.TESTING = True)
         
         order_data = {
             "user_id": 123456789,

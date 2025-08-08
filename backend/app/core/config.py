@@ -6,7 +6,7 @@ from pydantic import PostgresDsn, field_validator
 class Settings(BaseSettings):
     # Project
     PROJECT_NAME: str = "Seafood Store API"
-    VERSION: str = "1.0.0"
+    VERSION: str = "1.0.1"
     API_V1_STR: str = "/api/v1"
     
     # Security
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str
     ADMIN_CHAT_ID: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    
+    # Testing
+    TESTING: bool = False
     
     # Database
     POSTGRES_USER: str
@@ -50,9 +53,6 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
-    # Admin
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str
     
     # Web App
     WEB_APP_URL: str

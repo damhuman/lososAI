@@ -40,8 +40,8 @@ if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Serve web app
-if os.path.exists("../frontend/webapp"):
-    app.mount("/webapp", StaticFiles(directory="../frontend/webapp", html=True), name="webapp")
+if os.path.exists("static/webapp"):
+    app.mount("/webapp", StaticFiles(directory="static/webapp", html=True), name="webapp")
 
 # Serve React admin panel
 if os.path.exists("../admin-panel/build"):
@@ -61,7 +61,7 @@ async def health_check():
 @app.get("/webapp/{full_path:path}")
 async def serve_webapp(full_path: str):
     """Serve web app for SPA routing"""
-    webapp_dir = "../frontend/webapp"
+    webapp_dir = "static/webapp"
     if os.path.exists(webapp_dir):
         return FileResponse(f"{webapp_dir}/index.html")
     return {"error": "Web app not found"}

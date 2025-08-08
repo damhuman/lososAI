@@ -1,6 +1,8 @@
 from typing import List, Optional, Generic, TypeVar, Any
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, field_validator
 from datetime import datetime
+import html
+import re
 
 T = TypeVar('T')
 
@@ -54,6 +56,16 @@ class CategoryCreate(BaseModel):
     icon: str
     order: int = 0
     is_active: bool = True
+    
+    @field_validator('name', 'description')
+    @classmethod
+    def sanitize_text(cls, v):
+        if v is None:
+            return v
+        # Remove HTML tags and escape remaining content
+        v = re.sub(r'<[^>]*>', '', v)  # Remove HTML tags
+        v = html.escape(v)  # Escape remaining special chars
+        return v.strip()
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
@@ -61,6 +73,16 @@ class CategoryUpdate(BaseModel):
     icon: Optional[str] = None
     order: Optional[int] = None
     is_active: Optional[bool] = None
+    
+    @field_validator('name', 'description')
+    @classmethod
+    def sanitize_text(cls, v):
+        if v is None:
+            return v
+        # Remove HTML tags and escape remaining content
+        v = re.sub(r'<[^>]*>', '', v)  # Remove HTML tags
+        v = html.escape(v)  # Escape remaining special chars
+        return v.strip()
 
 # Product schemas  
 class PackageInfo(BaseModel):
@@ -79,7 +101,7 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     price_per_kg: float
     image_url: Optional[str] = None
-    packages: List[PackageInfo]
+    packages: Optional[List[PackageInfo]] = []
     is_active: bool = True
     is_featured: bool = False
     stock_quantity: Optional[float] = None

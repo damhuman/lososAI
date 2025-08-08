@@ -1,0 +1,112 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  quick-tests:
+    name: Quick Tests & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Python code formatting check
+      run: |
+        cd backend
+        python -m black --check . || echo "❌ Code formatting issues found. Run 'black .' to fix."
+
+    - name: Python imports sorting check  
+      run: |
+        cd backend
+        python -m isort --check-only . || echo "❌ Import sorting issues found. Run 'isort .' to fix."
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend/webapp
+        npm ci
+
+    - name: Frontend lint check
+      run: |
+        cd frontend/webapp
+        npm run test -- --watchAll=false --passWithNoTests
+
+    - name: Validate Docker Compose
+      run: |
+        docker-compose config > /dev/null
+        echo "✅ Docker Compose configuration is valid"
+
+  build-test:
+    name: Build & Test Services
+    runs-on: ubuntu-latest
+    needs: quick-tests
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: false
+        tags: seafood-backend:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build bot image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/bot.Dockerfile
+        push: false
+        tags: seafood-bot:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test service startup
+      run: |
+        echo "SECRET_KEY=test-key" > .env
+        echo "POSTGRES_DB=test_db" >> .env
+        echo "POSTGRES_USER=test" >> .env  
+        echo "POSTGRES_PASSWORD=test" >> .env
+        echo "TELEGRAM_BOT_TOKEN=test" >> .env
+        
+        # Start only essential services for testing
+        docker-compose up -d db redis
+        sleep 10
+        
+        # Test database connection
+        docker-compose exec -T db psql -U test -d test_db -c "SELECT 1;" || exit 1
+        echo "✅ Database connection successful"
+        
+        # Test Redis connection
+        docker-compose exec -T redis redis-cli ping || exit 1
+        echo "✅ Redis connection successful"

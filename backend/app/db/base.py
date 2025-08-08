@@ -4,3 +4,4 @@ from app.db.models.user import User  # noqa
 from app.db.models.product import Category, Product, ProductPackage, District, PromoCode  # noqa
 from app.db.models.order import Order, OrderItem, OrderStatus, DeliveryTimeSlot  # noqa
 from app.db.models.admin import AdminUser  # noqa
+from app.db.models.admin_settings import AdminSetting  # noqa

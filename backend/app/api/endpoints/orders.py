@@ -177,15 +177,20 @@ async def create_order(
     await session.refresh(order, ["items", "district"])
     
     # Send confirmation messages
+    client_message_sent = False
+    admin_message_sent = False
+    
     try:
         print(f"📤 Sending order confirmation messages for order #{order.order_id}")
         
         # Send confirmation to client
         client_result = await messaging_service.send_order_confirmation_to_client(order)
+        client_message_sent = client_result
         print(f"📱 Client message result: {client_result}")
         
         # Send notification to admin
         admin_result = await messaging_service.send_order_notification_to_admin(order)
+        admin_message_sent = admin_result
         print(f"👨‍💼 Admin message result: {admin_result}")
         
     except Exception as e:
@@ -194,6 +199,8 @@ async def create_order(
         import traceback
         traceback.print_exc()
     
+    # Return the order using the schema (which will handle proper serialization)
+    # The schema will automatically include all required fields
     return order
 
 

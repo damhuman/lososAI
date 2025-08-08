@@ -12,18 +12,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN adduser --disabled-password --gecos '' appuser
+
+# Copy Python packages from builder to appuser location
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Set ownership of packages
+RUN chown -R appuser:appuser /home/appuser/.local
 
 # Add user binaries to PATH
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Copy application code
 COPY . .
-
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
 USER appuser
 
 # Run the bot

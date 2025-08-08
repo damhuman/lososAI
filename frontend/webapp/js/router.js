@@ -18,6 +18,7 @@ class Router {
         this.registerScreen('product-detail', document.getElementById('product-detail'));
         this.registerScreen('cart', document.getElementById('cart'));
         this.registerScreen('checkout', document.getElementById('checkout'));
+        this.registerScreen('order-review', document.getElementById('order-review'));
         
         // Log registered screens
         console.log('Registered screens:', Object.keys(this.screens));
@@ -194,6 +195,10 @@ class Router {
                 break;
                 
             case 'checkout':
+                tg.showMainButton('Підтвердити дані');
+                break;
+                
+            case 'order-review':
                 tg.showMainButton('Підтвердити замовлення');
                 break;
                 
@@ -228,6 +233,10 @@ class Router {
                     
                 case 'checkout':
                     await this.loadCheckout();
+                    break;
+                    
+                case 'order-review':
+                    // Order review data will be loaded by the app when navigating
                     break;
             }
         } catch (error) {
@@ -302,6 +311,10 @@ class Router {
             existingBox.remove();
         }
         
+        // Get order ID from session storage
+        const lastOrderId = sessionStorage.getItem('lastOrderId') || '';
+        sessionStorage.removeItem('lastOrderId');
+        
         // Create confirmation box
         const confirmationBox = document.createElement('div');
         confirmationBox.className = 'order-confirmation-box';
@@ -310,7 +323,7 @@ class Router {
                 <div class="confirmation-icon">✅</div>
                 <div class="confirmation-text">
                     <h3>Замовлення прийнято!</h3>
-                    <p>Ваше замовлення успішно оформлено. Менеджер зв'яжеться з вами найближчим часом для уточнення часу доставки.</p>
+                    <p>Ваше замовлення ${lastOrderId ? `№${lastOrderId}` : ''} успішно оформлено. Менеджер зв'яжеться з вами найближчим часом для уточнення часу доставки.</p>
                 </div>
                 <button class="confirmation-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>

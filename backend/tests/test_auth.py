@@ -1,7 +1,6 @@
 """Tests for authentication and middleware."""
 import pytest
 from httpx import AsyncClient
-import base64
 import hmac
 import hashlib
 import time
@@ -13,39 +12,35 @@ from app.core.config import settings
 pytestmark = pytest.mark.asyncio
 
 
-class TestBasicAuth:
-    """Test HTTP Basic Authentication for admin endpoints."""
+class TestJWTAuth:
+    """Test JWT Authentication for admin endpoints."""
     
     async def test_missing_auth_header(self, client: AsyncClient):
         """Test request without Authorization header."""
-        response = await client.get("/api/v1/admin/verify")
-        assert response.status_code == 401
-        assert "Authentication required" in response.json()["detail"]
+        response = await client.get("/api/v1/admin/categories")
+        assert response.status_code in [401, 403]  # HTTPBearer returns 403, but both are valid for missing auth
     
     async def test_invalid_auth_scheme(self, client: AsyncClient):
         """Test request with invalid auth scheme."""
-        headers = {"Authorization": "Bearer invalid"}
-        response = await client.get("/api/v1/admin/verify", headers=headers)
+        headers = {"Authorization": "Basic invalid"}
+        response = await client.get("/api/v1/admin/categories", headers=headers)
+        assert response.status_code in [401, 403]  # Different auth schemes can return either
+    
+    async def test_invalid_jwt_token(self, client: AsyncClient):
+        """Test request with invalid JWT token."""
+        headers = {"Authorization": "Bearer invalid.token.here"}
+        response = await client.get("/api/v1/admin/categories", headers=headers)
         assert response.status_code == 401
     
-    async def test_invalid_credentials(self, client: AsyncClient):
-        """Test request with invalid credentials."""
-        credentials = base64.b64encode(b"wrong:wrong").decode("ascii")
-        headers = {"Authorization": f"Basic {credentials}"}
-        response = await client.get("/api/v1/admin/verify", headers=headers)
+    async def test_malformed_jwt_token(self, client: AsyncClient):
+        """Test request with malformed JWT token."""
+        headers = {"Authorization": "Bearer invalid_token"}
+        response = await client.get("/api/v1/admin/categories", headers=headers)
         assert response.status_code == 401
     
-    async def test_malformed_basic_auth(self, client: AsyncClient):
-        """Test request with malformed Basic auth."""
-        headers = {"Authorization": "Basic invalid_base64"}
-        response = await client.get("/api/v1/admin/verify", headers=headers)
-        assert response.status_code == 401
-    
-    async def test_valid_credentials(self, client: AsyncClient):
-        """Test request with valid credentials."""
-        credentials = base64.b64encode(b"admin:admin123").decode("ascii")
-        headers = {"Authorization": f"Basic {credentials}"}
-        response = await client.get("/api/v1/admin/verify", headers=headers)
+    async def test_valid_jwt_token(self, client: AsyncClient, admin_headers):
+        """Test request with valid JWT token."""
+        response = await client.get("/api/v1/admin/categories", headers=admin_headers)
         assert response.status_code == 200
 
 
@@ -71,25 +66,25 @@ class TestTelegramAuth:
         params["hash"] = hash_value
         return "&".join([f"{k}={v}" for k, v in params.items()])
     
-    async def test_missing_telegram_auth(self, client: AsyncClient):
+    async def test_missing_telegram_auth(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint without auth."""
-        response = await client.get("/api/v1/orders/my")
+        response = await unauthenticated_client.get("/api/v1/orders/")
         assert response.status_code == 401
     
-    async def test_invalid_telegram_auth_scheme(self, client: AsyncClient):
+    async def test_invalid_telegram_auth_scheme(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with invalid auth scheme."""
         headers = {"Authorization": "Basic invalid"}
-        response = await client.get("/api/v1/orders/my", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_invalid_telegram_hash(self, client: AsyncClient):
+    async def test_invalid_telegram_hash(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with invalid hash."""
         invalid_init_data = "query_id=test&user={}&auth_date=1234567890&hash=invalid"
         headers = {"Authorization": f"tma {invalid_init_data}"}
-        response = await client.get("/api/v1/orders/my", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_expired_telegram_auth(self, client: AsyncClient):
+    async def test_expired_telegram_auth(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with expired auth."""
         old_timestamp = int(time.time()) - 90000  # Very old timestamp
         params = {
@@ -100,14 +95,14 @@ class TestTelegramAuth:
         }
         init_data = "&".join([f"{k}={v}" for k, v in params.items()])
         headers = {"Authorization": f"tma {init_data}"}
-        response = await client.get("/api/v1/orders/my", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_malformed_user_data(self, client: AsyncClient):
+    async def test_malformed_user_data(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with malformed user data."""
         init_data = "query_id=test&user=invalid_json&auth_date=1234567890&hash=test"
         headers = {"Authorization": f"tma {init_data}"}
-        response = await client.get("/api/v1/orders/my", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
 
 
@@ -254,5 +249,5 @@ class TestSecurity:
         # This would test the image upload endpoint
         # For now, just verify the endpoint exists and requires auth
         response = await client.post("/api/v1/admin/upload/image", files={"image": ("test.txt", b"test", "text/plain")})
-        # Should require authentication
-        assert response.status_code == 401
+        # Should require authentication (401) or be forbidden (403)
+        assert response.status_code in [401, 403]
