@@ -1,62 +1,23 @@
 # TODO List
 
-## 🔴 HIGHEST PRIORITY: Test Framework Setup
+## ✅ COMPLETED: Test Framework & Basic Auth Cleanup
 
-### Unified Testing Infrastructure
-- [ ] Audit all existing backend tests and verify they run
-- [ ] Clean up duplicate/obsolete test files (test_simple.py, quick_test.py, etc.)
-- [ ] Fix failing backend tests and update for JWT auth
-- [ ] Set up Jest testing framework for frontend Telegram Mini App
-- [ ] Create root-level test runner script for all services
-- [ ] Add test coverage reporting
+### Testing Infrastructure ✅ DONE
+- ✅ Comprehensive TDD framework implemented (commit 8dac07a)
+- ✅ GitHub Actions CI/CD pipeline set up
+- ✅ Backend tests organized and running
+- ✅ Frontend Jest testing framework configured
+- ✅ Unified test runner (`test.sh`) created
+- ✅ Test coverage reporting enabled
 
-### Backend Test Organization
-- [ ] Consolidate test files into proper structure:
-  - `tests/unit/` - Model and service tests
-  - `tests/integration/` - API endpoint tests  
-  - `tests/e2e/` - Full flow tests
-- [ ] Remove duplicate test files (multiple test_admin_endpoints variants)
-- [ ] Update all tests for JWT authentication (remove Basic Auth)
-- [ ] Ensure async tests work properly with pytest-asyncio
+### Authentication Cleanup ✅ MOSTLY DONE
+- ✅ Remove `ADMIN_USERNAME` and `ADMIN_PASSWORD` from `.env.template` (uncommitted)
+- ✅ JWT authentication fully implemented and tested
+- ✅ Basic Auth code cleaned from backend endpoints
+- [ ] **COMMIT PENDING**: Current Basic Auth cleanup changes
+- [ ] Final verification that admin panel works with JWT only
 
-### Frontend Testing (Telegram Mini App)
-- [ ] Install Jest and testing dependencies
-- [ ] Configure Jest for vanilla JS with ES6 modules
-- [ ] Write tests for:
-  - `cart.js` - Cart calculations, add/remove items
-  - `api.js` - API client error handling
-  - `app.js` - Order submission flow
-  - `router.js` - Navigation logic
-- [ ] Mock Telegram WebApp API for tests
-- [ ] Test critical user flows (add to cart → checkout → order)
-
-### Unified Test Command
-- [ ] Create `test.sh` script in root directory
-- [ ] Add Docker Compose command to run all tests
-- [ ] Separate commands for:
-  - `test:backend` - Python/pytest tests
-  - `test:frontend` - Jest tests for mini app
-  - `test:all` - Run everything in parallel
-
-**Priority**: HIGHEST  
-**Status**: Not Started  
-**Notes**: Testing is critical before implementing new features. Focus on testing existing functionality first, especially order flow and authentication. Admin panel tests postponed for later.
-
-## Authentication System Cleanup
-
-### Remove Legacy HTTP Basic Auth
-- [ ] Remove HTTP Basic Auth references from documentation (CLAUDE.md)
-- [ ] Remove `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables from `.env.template`
-- [ ] Clean up any remaining Basic Auth code in backend admin endpoints
-- [ ] Remove Basic Auth headers from API client configurations
-- [ ] Update admin panel documentation to reflect JWT-only authentication
-- [ ] Test admin panel functionality with only JWT authentication
-- [ ] Remove Basic Auth fallback mechanisms if any exist
-- [ ] Update deployment scripts/configs to remove Basic Auth credentials
-
-**Priority**: Medium  
-**Status**: Not Started  
-**Notes**: JWT authentication is already implemented and working. Basic Auth is legacy and should be completely removed to avoid confusion and security issues.
+**Status**: Ready to commit current Basic Auth cleanup changes
 
 ## Enhanced Admin Order Management System
 

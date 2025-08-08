@@ -155,9 +155,9 @@ Key models in `backend/app/db/models/`:
 - Users are auto-created/updated from Telegram data
 
 **Admin Panel:**
-- Uses HTTP Basic Authentication
-- Admin credentials stored in environment variables (`ADMIN_USERNAME`, `ADMIN_PASSWORD`)
-- All admin API endpoints require Basic Auth header
+- Uses JWT authentication system
+- Admin credentials validated against backend user database
+- All admin API endpoints require JWT token in Authorization header
 
 ### Frontend Architecture
 
@@ -172,7 +172,7 @@ Key models in `backend/app/db/models/`:
 - **React Query**: Data fetching, caching, and synchronization
 - **Ant Design**: UI component library with Ukrainian localization
 - **TypeScript**: Type safety and better development experience
-- **Axios**: HTTP client with automatic Basic Auth injection
+- **Axios**: HTTP client with automatic JWT token injection
 
 ## Configuration
 
@@ -181,8 +181,6 @@ Key models in `backend/app/db/models/`:
 2. Set required variables:
    - `SECRET_KEY`: Backend encryption key
    - `TELEGRAM_BOT_TOKEN`: From @BotFather
-   - `ADMIN_USERNAME`: Admin panel username (default: admin)
-   - `ADMIN_PASSWORD`: Admin panel password
    - `WEB_APP_URL`: HTTPS URL for Telegram Web App
    - `S3_*`: S3/DigitalOcean Spaces credentials for file uploads
 
@@ -210,7 +208,7 @@ Telegram Web Apps require HTTPS in production. Configure SSL certificates in `do
 ### Admin Panel
 - `admin-panel/src/App.tsx`: Main React application with routing
 - `admin-panel/src/pages/`: Page components (Dashboard, Products, Orders, etc.)
-- `admin-panel/src/services/api.ts`: API client with Basic Auth
+- `admin-panel/src/services/api.ts`: API client with JWT authentication
 - `admin-panel/src/hooks/useAuth.tsx`: Authentication context and hooks
 - `admin-panel/src/types/index.ts`: TypeScript type definitions
 
@@ -229,8 +227,8 @@ The admin panel is a React-based web application that provides comprehensive man
 
 ### Access & Authentication
 - **URL**: http://localhost:8081/admin (development)
-- **Authentication**: HTTP Basic Auth
-- **Default Credentials**: admin / admin123 (configurable via environment)
+- **Authentication**: JWT-based login system
+- **Login**: Use admin credentials to obtain JWT token
 
 ### Features & Functionality
 
@@ -284,7 +282,7 @@ The admin panel is a React-based web application that provides comprehensive man
 
 **API Integration:**
 - RESTful API communication with `/api/v1/admin/*` endpoints
-- Automatic authentication header injection
+- Automatic JWT token header injection
 - Error handling and loading states
 - Real-time data synchronization
 

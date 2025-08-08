@@ -50,9 +50,6 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
-    # Admin
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str
     
     # Web App
     WEB_APP_URL: str
