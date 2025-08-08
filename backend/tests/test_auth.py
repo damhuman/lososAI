@@ -66,25 +66,25 @@ class TestTelegramAuth:
         params["hash"] = hash_value
         return "&".join([f"{k}={v}" for k, v in params.items()])
     
-    async def test_missing_telegram_auth(self, client: AsyncClient):
+    async def test_missing_telegram_auth(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint without auth."""
-        response = await client.get("/api/v1/orders/")
+        response = await unauthenticated_client.get("/api/v1/orders/")
         assert response.status_code == 401
     
-    async def test_invalid_telegram_auth_scheme(self, client: AsyncClient):
+    async def test_invalid_telegram_auth_scheme(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with invalid auth scheme."""
         headers = {"Authorization": "Basic invalid"}
-        response = await client.get("/api/v1/orders/", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_invalid_telegram_hash(self, client: AsyncClient):
+    async def test_invalid_telegram_hash(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with invalid hash."""
         invalid_init_data = "query_id=test&user={}&auth_date=1234567890&hash=invalid"
         headers = {"Authorization": f"tma {invalid_init_data}"}
-        response = await client.get("/api/v1/orders/", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_expired_telegram_auth(self, client: AsyncClient):
+    async def test_expired_telegram_auth(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with expired auth."""
         old_timestamp = int(time.time()) - 90000  # Very old timestamp
         params = {
@@ -95,14 +95,14 @@ class TestTelegramAuth:
         }
         init_data = "&".join([f"{k}={v}" for k, v in params.items()])
         headers = {"Authorization": f"tma {init_data}"}
-        response = await client.get("/api/v1/orders/", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
     
-    async def test_malformed_user_data(self, client: AsyncClient):
+    async def test_malformed_user_data(self, unauthenticated_client: AsyncClient):
         """Test Telegram endpoint with malformed user data."""
         init_data = "query_id=test&user=invalid_json&auth_date=1234567890&hash=test"
         headers = {"Authorization": f"tma {init_data}"}
-        response = await client.get("/api/v1/orders/", headers=headers)
+        response = await unauthenticated_client.get("/api/v1/orders/", headers=headers)
         assert response.status_code == 401
 
 

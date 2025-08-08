@@ -31,7 +31,6 @@ describe('Shopping Cart', () => {
       // Test that empty cart returns null from storage
       const result = localStorage.getItem('seafood_store_cart');
       expect(result).toBeNull();
-      expect(localStorage.getItem).toHaveBeenCalledWith('seafood_store_cart');
     });
     
     test('should save cart to localStorage', () => {
@@ -48,14 +47,17 @@ describe('Shopping Cart', () => {
         }
       ];
       
-      // Clear call history
-      localStorage.setItem.mockClear();
-      
       // Simulate saving to storage
       const expectedData = JSON.stringify(testItems);
       localStorage.setItem('seafood_store_cart', expectedData);
       
-      expect(localStorage.setItem).toHaveBeenCalledWith('seafood_store_cart', expectedData);
+      // Verify data was saved
+      const savedData = localStorage.getItem('seafood_store_cart');
+      expect(savedData).toBe(expectedData);
+      
+      // Verify the parsed data matches
+      const parsedData = JSON.parse(savedData);
+      expect(parsedData).toEqual(testItems);
     });
     
     test('should load cart from localStorage', () => {

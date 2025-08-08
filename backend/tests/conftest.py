@@ -67,12 +67,28 @@ async def test_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(test_session: AsyncSession, sample_user: User) -> AsyncGenerator[AsyncClient, None]:
-    """Create a test client with database override."""
+async def unauthenticated_client(test_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client WITHOUT authentication for testing auth failures."""
     def override_get_db():
         return test_session
     
-    # Mock the get_current_user dependency for tests
+    app.dependency_overrides[get_async_session] = override_get_db
+    # Explicitly do NOT mock get_current_user for auth tests
+    
+    try:
+        async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as ac:
+            yield ac
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def client(test_session: AsyncSession, sample_user: User) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client with database override and authenticated user."""
+    def override_get_db():
+        return test_session
+    
+    # Mock the get_current_user dependency for tests that need authentication
     def mock_get_current_user():
         return sample_user
     
