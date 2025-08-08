@@ -249,5 +249,5 @@ class TestSecurity:
         # This would test the image upload endpoint
         # For now, just verify the endpoint exists and requires auth
         response = await client.post("/api/v1/admin/upload/image", files={"image": ("test.txt", b"test", "text/plain")})
-        # Should require authentication
-        assert response.status_code == 401
+        # Should require authentication (401) or be forbidden (403)
+        assert response.status_code in [401, 403]

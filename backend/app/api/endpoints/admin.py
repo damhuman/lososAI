@@ -56,7 +56,7 @@ async def create_category(
 ):
     """Create new category"""
     try:
-        db_category = Category(**category.dict())
+        db_category = Category(**category.model_dump())
         session.add(db_category)
         await session.commit()
         await session.refresh(db_category)
@@ -80,7 +80,7 @@ async def update_category(
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
     
-    for field, value in category.dict(exclude_unset=True).items():
+    for field, value in category.model_dump(exclude_unset=True).items():
         setattr(db_category, field, value)
     
     await session.commit()
@@ -192,7 +192,7 @@ async def create_product(
 ):
     """Create new product"""
     try:
-        db_product = Product(**product.dict())
+        db_product = Product(**product.model_dump())
         session.add(db_product)
         await session.commit()
         await session.refresh(db_product)
@@ -223,7 +223,7 @@ async def update_product(
     if product.image_url and db_product.image_url and product.image_url != db_product.image_url:
         await s3_service.delete_image(db_product.image_url)
     
-    for field, value in product.dict(exclude_unset=True).items():
+    for field, value in product.model_dump(exclude_unset=True).items():
         setattr(db_product, field, value)
     
     await session.commit()
@@ -340,7 +340,7 @@ async def update_user(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    for field, value in user.dict(exclude_unset=True).items():
+    for field, value in user.model_dump(exclude_unset=True).items():
         setattr(db_user, field, value)
     
     await session.commit()
@@ -657,7 +657,7 @@ async def create_district(
     current_admin: AdminUser = Depends(get_current_admin)
 ):
     """Create new district"""
-    db_district = District(**district.dict())
+    db_district = District(**district.model_dump())
     session.add(db_district)
     await session.commit()
     await session.refresh(db_district)
@@ -678,7 +678,7 @@ async def update_district(
     if not db_district:
         raise HTTPException(status_code=404, detail="District not found")
     
-    for field, value in district.dict(exclude_unset=True).items():
+    for field, value in district.model_dump(exclude_unset=True).items():
         setattr(db_district, field, value)
     
     await session.commit()
@@ -739,7 +739,7 @@ async def create_promo_code(
 ):
     """Create new promo code"""
     try:
-        db_promo_code = PromoCode(**promo_code.dict())
+        db_promo_code = PromoCode(**promo_code.model_dump())
         session.add(db_promo_code)
         await session.commit()
         await session.refresh(db_promo_code)
@@ -763,7 +763,7 @@ async def update_promo_code(
     if not db_promo_code:
         raise HTTPException(status_code=404, detail="Promo code not found")
     
-    for field, value in promo_code.dict(exclude_unset=True).items():
+    for field, value in promo_code.model_dump(exclude_unset=True).items():
         setattr(db_promo_code, field, value)
     
     await session.commit()
@@ -836,7 +836,7 @@ async def create_product_package(
     try:
         db_package = ProductPackage(
             product_id=product_id,
-            **package.dict()
+            **package.model_dump()
         )
         session.add(db_package)
         await session.commit()
@@ -887,7 +887,7 @@ async def update_product_package(
     if not db_package:
         raise HTTPException(status_code=404, detail="Package not found")
     
-    for field, value in package.dict(exclude_unset=True).items():
+    for field, value in package.model_dump(exclude_unset=True).items():
         setattr(db_package, field, value)
     
     await session.commit()
