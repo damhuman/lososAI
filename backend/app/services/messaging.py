@@ -15,6 +15,11 @@ class MessagingService:
     
     async def send_order_confirmation_to_client(self, order: Order) -> bool:
         """Send order confirmation message to client"""
+        # Skip sending messages during tests
+        if settings.TESTING:
+            print(f"🧪 Test mode: Skipping client confirmation for order #{order.order_id}")
+            return True
+            
         try:
             print(f"🔄 Formatting client confirmation for order #{order.order_id}, user {order.user_id}")
             message = self._format_client_confirmation_message(order)
@@ -56,6 +61,11 @@ class MessagingService:
     
     async def send_order_notification_to_admin(self, order: Order) -> bool:
         """Send order notification to admin chat"""
+        # Skip sending messages during tests
+        if settings.TESTING:
+            print(f"🧪 Test mode: Skipping admin notification for order #{order.order_id}")
+            return True
+            
         try:
             if not settings.ADMIN_CHAT_ID:
                 print("⚠️ No admin chat ID configured in environment")

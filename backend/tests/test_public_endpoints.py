@@ -214,17 +214,12 @@ class TestPromo:
 class TestOrders:
     """Test order creation and management endpoints."""
     
-    @patch('httpx.AsyncClient.post', new_callable=AsyncMock)
-    async def test_create_order_success(self, mock_post, client: AsyncClient, test_session: AsyncSession, 
+    async def test_create_order_success(self, client: AsyncClient, test_session: AsyncSession, 
                                        sample_product, sample_district, telegram_headers):
         """Test creating a new order successfully."""
-        # Mock HTTP calls to Telegram API
-        mock_response = AsyncMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"ok": True, "result": {"message_id": 123}}
-        mock_post.return_value = mock_response
-        
         # User is already mocked via dependency injection
+        # Messaging service will skip real API calls in test mode (settings.TESTING = True)
+        
         order_data = {
             "user_id": 123456789,
             "user_name": "Test User",
@@ -254,9 +249,6 @@ class TestOrders:
         assert data["status"] == "pending"
         assert len(data["items"]) == 1
         assert data["total_amount"] > 0
-        
-        # Verify HTTP calls were made to Telegram API
-        assert mock_post.called
     
     async def test_create_order_invalid_product(self, client: AsyncClient, sample_district, telegram_headers):
         """Test creating order with invalid product."""

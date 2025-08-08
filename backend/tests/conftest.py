@@ -15,10 +15,14 @@ from app.db.models.user import User
 from app.db.models.order import Order, OrderItem
 from app.db.models.admin import AdminUser
 from app.core.security import get_password_hash
+from app.core.config import settings
 
 
 # Test database URL - using in-memory SQLite for faster tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# Set testing flag for the entire test session
+settings.TESTING = True
 
 # Create test engine with proper settings for SQLite
 test_engine = create_async_engine(
